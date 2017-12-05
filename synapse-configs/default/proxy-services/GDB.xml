@@ -308,23 +308,7 @@
                      </log>
                      <log level="full"/>
                      <call>
-                        <endpoint name="ComptelEP">
-                           <address uri="http://10.50.6.250:22006/ilws/InstantLinkSOA" format="soap12">
-                              <timeout>
-                                 <duration>4000</duration>
-                                 <responseAction>fault</responseAction>
-                              </timeout>
-                              <suspendOnFailure>
-                                 <errorCodes>-1</errorCodes>
-                                 <initialDuration>0</initialDuration>
-                                 <progressionFactor>1.0</progressionFactor>
-                                 <maximumDuration>0</maximumDuration>
-                              </suspendOnFailure>
-                              <markForSuspension>
-                                 <errorCodes>-1</errorCodes>
-                              </markForSuspension>
-                           </address>
-                        </endpoint>
+                        <endpoint key="ComptelEP"/>      
                      </call>
                      <log level="full"/>
                      <property xmlns:ns="http://soa.comptel.com/2011/02/instantlink"
@@ -447,25 +431,7 @@
                                                  type="STRING"/>
                                        <log level="full"/>
                                        <call>
-                                          <endpoint name="IN_EP">
-                                             <http format="rest"
-                                                   method="POST"
-                                                   uri-template="http://10.13.32.156:10010/Air">
-                                                <timeout>
-                                                   <duration>10000</duration>
-                                                   <responseAction>fault</responseAction>
-                                                </timeout>
-                                                <suspendOnFailure>
-                                                   <errorCodes>-1</errorCodes>
-                                                   <initialDuration>0</initialDuration>
-                                                   <progressionFactor>1.0</progressionFactor>
-                                                   <maximumDuration>0</maximumDuration>
-                                                </suspendOnFailure>
-                                                <markForSuspension>
-                                                   <errorCodes>-1</errorCodes>
-                                                </markForSuspension>
-                                             </http>
-                                          </endpoint>
+                                          <endpoint key="IN_EP"/>   
                                        </call>
                                        <log level="full"/>
                                        <log level="custom">
@@ -924,25 +890,7 @@
                                            type="STRING"/>
                                  <log level="full"/>
                                  <call>
-                                    <endpoint name="IN_EP">
-                                       <http format="rest"
-                                             method="POST"
-                                             uri-template="http://10.13.32.156:10010/Air">
-                                          <timeout>
-                                             <duration>10000</duration>
-                                             <responseAction>fault</responseAction>
-                                          </timeout>
-                                          <suspendOnFailure>
-                                             <errorCodes>-1</errorCodes>
-                                             <initialDuration>0</initialDuration>
-                                             <progressionFactor>1.0</progressionFactor>
-                                             <maximumDuration>0</maximumDuration>
-                                          </suspendOnFailure>
-                                          <markForSuspension>
-                                             <errorCodes>-1</errorCodes>
-                                          </markForSuspension>
-                                       </http>
-                                    </endpoint>
+                                    <endpoint key="IN_EP"/>
                                  </call>
                                  <log level="full"/>
                                  <log level="custom">
@@ -1451,23 +1399,7 @@
                         </args>
                      </payloadFactory>
                      <call>
-                        <endpoint name="ComptelEP">
-                           <address uri="http://10.50.6.250:22006/ilws/InstantLinkSOA" format="soap12">
-                              <timeout>
-                                 <duration>4000</duration>
-                                 <responseAction>fault</responseAction>
-                              </timeout>
-                              <suspendOnFailure>
-                                 <errorCodes>-1</errorCodes>
-                                 <initialDuration>0</initialDuration>
-                                 <progressionFactor>1.0</progressionFactor>
-                                 <maximumDuration>0</maximumDuration>
-                              </suspendOnFailure>
-                              <markForSuspension>
-                                 <errorCodes>-1</errorCodes>
-                              </markForSuspension>
-                           </address>
-                        </endpoint>
+                        <endpoint key="ComptelEP"/>
                      </call>
                      <property xmlns:ns="http://soa.comptel.com/2011/02/instantlink"
                                name="msisdn"
@@ -1682,25 +1614,7 @@
                         <property name="IN REQUEST" value="-----------INREQUEST-----------"/>
                      </log>
                      <call>
-                        <endpoint name="IN_EP">
-                           <http format="rest"
-                                 method="POST"
-                                 uri-template="http://10.13.32.156:10010/Air">
-                              <timeout>
-                                 <duration>10000</duration>
-                                 <responseAction>fault</responseAction>
-                              </timeout>
-                              <suspendOnFailure>
-                                 <errorCodes>-1</errorCodes>
-                                 <initialDuration>0</initialDuration>
-                                 <progressionFactor>1.0</progressionFactor>
-                                 <maximumDuration>0</maximumDuration>
-                              </suspendOnFailure>
-                              <markForSuspension>
-                                 <errorCodes>-1</errorCodes>
-                              </markForSuspension>
-                           </http>
-                        </endpoint>
+                        <endpoint key="IN_EP"/>   
                      </call>
                      <dbreport description="">
                         <connection>
@@ -2369,25 +2283,7 @@
                         </statement>
                      </dbreport>
                      <call>
-                        <endpoint name="IN_EP">
-                           <http format="rest"
-                                 method="POST"
-                                 uri-template="http://10.13.32.156:10010/Air">
-                              <timeout>
-                                 <duration>10000</duration>
-                                 <responseAction>fault</responseAction>
-                              </timeout>
-                              <suspendOnFailure>
-                                 <errorCodes>-1</errorCodes>
-                                 <initialDuration>0</initialDuration>
-                                 <progressionFactor>1.0</progressionFactor>
-                                 <maximumDuration>0</maximumDuration>
-                              </suspendOnFailure>
-                              <markForSuspension>
-                                 <errorCodes>-1</errorCodes>
-                              </markForSuspension>
-                           </http>
-                        </endpoint>
+                        <endpoint key="IN_EP"/>
                      </call>
                      <enrich>
                         <source type="body" clone="true"/>

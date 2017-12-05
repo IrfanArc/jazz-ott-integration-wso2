@@ -83,10 +83,7 @@
    <log level="full"/>
    <property name="messageType" value="application/xml" scope="axis2"/>
    <call>
-      <endpoint name="HTTPEndpoint">
-         <http method="POST"
-               uri-template="http://10.50.13.134:8282/googleott/conveyrequest"/>
-      </endpoint>
+        <endpoint key="GDCBCallback"/>
    </call>
    <log level="custom">
       <property name="**********Response" value="************"/>

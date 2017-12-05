@@ -60,9 +60,7 @@
          <header name="User-Agent" scope="transport" value="Apache-HttpClient/4.1.1"/>
          <log level="full"/>
          <call>
-            <endpoint>
-               <address uri="http://10.50.13.129:8282/GDCBCallback" format="soap11"/>
-            </endpoint>
+            <endpoint key="GDCBCallback"/>
          </call>
          <log level="full"/>
          <drop/>
@@ -116,9 +114,7 @@
          <header name="User-Agent" scope="transport" value="Apache-HttpClient/4.1.1"/>
          <log level="full"/>
          <call>
-            <endpoint>
-               <address uri="http://10.50.13.129:8282/GDCBCallback" format="soap11"/>
-            </endpoint>
+            <endpoint key="GDCBCallback"/>
          </call>
          <log level="full"/>
          <drop/>
@@ -220,9 +216,7 @@
                      <header name="User-Agent" scope="transport" value="Apache-HttpClient/4.1.1"/>
                      <log level="full"/>
                      <call>
-                        <endpoint>
-                           <address uri="http://10.50.13.129:8282/GDCBCallback" format="soap11"/>
-                        </endpoint>
+                        <endpoint key="GDCBCallback"/>
                      </call>
                      <log level="full"/>
                      <drop/>
@@ -380,25 +374,7 @@
                                      type="STRING"/>
                            <log level="full"/>
                            <call>
-                              <endpoint name="IN_EP">
-                                 <http format="rest"
-                                       method="POST"
-                                       uri-template="http://10.13.32.156:10010/Air">
-                                    <timeout>
-                                       <duration>10000</duration>
-                                       <responseAction>fault</responseAction>
-                                    </timeout>
-                                    <suspendOnFailure>
-                                       <errorCodes>-1</errorCodes>
-                                       <initialDuration>0</initialDuration>
-                                       <progressionFactor>1.0</progressionFactor>
-                                       <maximumDuration>0</maximumDuration>
-                                    </suspendOnFailure>
-                                    <markForSuspension>
-                                       <errorCodes>-1</errorCodes>
-                                    </markForSuspension>
-                                 </http>
-                              </endpoint>
+                              <endpoint key="IN_EP"/>
                            </call>
                            <log level="full">
                               <property name="AIN Response" value="*** Printing IN Response ***"/>
@@ -449,9 +425,7 @@
                                  <header name="User-Agent" scope="transport" value="Apache-HttpClient/4.1.1"/>
                                  <log level="full"/>
                                  <call>
-                                    <endpoint>
-                                       <address uri="http://10.50.13.129:8282/GDCBCallback" format="soap11"/>
-                                    </endpoint>
+                                    <endpoint key="GDCBCallback"/>
                                  </call>
                                  <log level="full"/>
                                  <drop/>
@@ -506,9 +480,7 @@
                                  <header name="User-Agent" scope="transport" value="Apache-HttpClient/4.1.1"/>
                                  <log level="full"/>
                                  <call>
-                                    <endpoint>
-                                       <address uri="http://10.50.13.129:8282/GDCBCallback" format="soap11"/>
-                                    </endpoint>
+                                    <endpoint key="GDCBCallback"/>
                                  </call>
                                  <log level="full"/>
                                  <drop/>
@@ -573,9 +545,7 @@
                                  <header name="User-Agent" scope="transport" value="Apache-HttpClient/4.1.1"/>
                                  <log level="full"/>
                                  <call>
-                                    <endpoint>
-                                       <address uri="http://10.50.13.129:8282/GDCBCallback" format="soap11"/>
-                                    </endpoint>
+                                    <endpoint key="GDCBCallback"/>
                                  </call>
                                  <log level="full"/>
                                  <drop/>
@@ -677,9 +647,7 @@
                                  <header name="User-Agent" scope="transport" value="Apache-HttpClient/4.1.1"/>
                                  <log level="full"/>
                                  <call>
-                                    <endpoint>
-                                       <address uri="http://10.50.13.129:8282/GDCBCallback" format="soap11"/>
-                                    </endpoint>
+                                    <endpoint key="GDCBCallback"/>
                                  </call>
                                  <log level="full"/>
                                  <drop/>
@@ -729,9 +697,7 @@
                                  <header name="User-Agent" scope="transport" value="Apache-HttpClient/4.1.1"/>
                                  <log level="full"/>
                                  <call>
-                                    <endpoint>
-                                       <address uri="http://10.50.13.129:8282/GDCBCallback" format="soap11"/>
-                                    </endpoint>
+                                   <endpoint key="GDCBCallback"/>
                                  </call>
                                  <log level="full"/>
                                  <drop/>
@@ -790,9 +756,7 @@
                <header name="User-Agent" scope="transport" value="Apache-HttpClient/4.1.1"/>
                <log level="full"/>
                <call>
-                  <endpoint>
-                     <address uri="http://10.50.13.129:8282/GDCBCallback" format="soap11"/>
-                  </endpoint>
+                 <endpoint key="GDCBCallback"/>
                </call>
                <log level="full"/>
                <drop/>
@@ -848,9 +812,7 @@
                <header name="User-Agent" scope="transport" value="Apache-HttpClient/4.1.1"/>
                <log level="full"/>
                <call>
-                  <endpoint>
-                     <address uri="http://10.50.13.129:8282/GDCBCallback" format="soap11"/>
-                  </endpoint>
+                    <endpoint key="GDCBCallback"/>
                </call>
                <log level="full"/>
                <drop/>

@@ -107,9 +107,7 @@
                <header name="User-Agent" scope="transport" value="Apache-HttpClient/4.1.1"/>
                <log level="full"/>
                <call>
-                  <endpoint>
-                     <address uri="http://10.50.13.129:8282/GDCBCallback" format="soap11"/>
-                  </endpoint>
+                  <endpoint key="GDCBCallback"/>
                </call>
                <log level="full"/>
                <log level="custom">
@@ -204,22 +202,7 @@
    <header name="User-Agent" scope="transport" value="Apache-HttpClient/4.1.1"/>
    <log level="full"/>
    <call>
-      <endpoint>
-         <address uri="http://10.50.13.129:8282/GDCBCallback" format="soap11">
-            <timeout>
-               <responseAction>fault</responseAction>
-            </timeout>
-            <suspendOnFailure>
-               <errorCodes>-1</errorCodes>
-               <initialDuration>0</initialDuration>
-               <progressionFactor>1.0</progressionFactor>
-               <maximumDuration>0</maximumDuration>
-            </suspendOnFailure>
-            <markForSuspension>
-               <errorCodes>-1</errorCodes>
-            </markForSuspension>
-         </address>
-      </endpoint>
+       <endpoint key="GDCBCallback"/>
    </call>
    <log level="full">
       <property name="CHARGE_SUBSCRIBER_RESPONSE" value="OTT Endpoint called"/>
