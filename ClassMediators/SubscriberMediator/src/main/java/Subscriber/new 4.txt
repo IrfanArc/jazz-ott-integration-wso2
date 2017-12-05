@@ -1,0 +1,86 @@
+package Subscriber;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.StringReader;
+
+import javax.xml.bind.JAXB;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+
+import org.apache.synapse.MessageContext;
+import org.apache.synapse.mediators.AbstractMediator;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
+import org.w3c.dom.NamedNodeMap;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
+
+public class RequestedAttribuesGroup extends AbstractMediator {
+
+	@Override
+	public boolean mediate(MessageContext context) {
+		context.getProperty("RequestedSubscriberAttributes");
+		System.out.println(context.getMessageString());
+		System.out.println(context.getProperty("$body//p:GetSubscriberInfoRequest/p:RequestedSubscriberAttributes/"));
+		 DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory.newInstance();
+		    DocumentBuilder docBuilder;
+			try {
+				docBuilder = docBuilderFactory.newDocumentBuilder();
+				String att=context.getProperty("RequestedSubscriberAttributes").toString();
+				Document doc;		
+				doc = convertStringToDocument(att);
+				doc.getDocumentElement().normalize();
+			    
+			    
+				System.out.println ("Root element of the doc is " + doc.getDocumentElement().getNodeName());
+				System.out.println(":::"+doc.getChildNodes());
+			    NodeList nodeslist = doc.getElementsByTagName("RequestedSubscriberAttributes");
+			    
+			    System.out.println("nodes:"+nodeslist.getLength());
+			    System.out.println("First nodes"+nodeslist.item(0));
+			    Element eElement = (Element) nodeslist.item(0);
+			    System.out.println("n:"+ getStringNode(doc.getDocumentElement().getNodeName(), eElement));
+			    int totalnodes = nodeslist.getLength();
+			    System.out.println("Total no of attributes : " + totalnodes);
+
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		    
+		    // normalize text representation
+		    		
+		System.out.println("reqAtts:"+context.getProperty("RequestedSubscriberAttributes"));
+		return true;
+	}
+	private static Document convertStringToDocument(String xmlStr) {
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();  
+        DocumentBuilder builder;  
+        try  
+        {  
+            builder = factory.newDocumentBuilder();  
+            Document doc = builder.parse( new InputSource( new StringReader( xmlStr ) ) ); 
+            return doc;
+        } catch (Exception e) {  
+            e.printStackTrace();  
+        } 
+        return null;
+    }
+	
+	private static String getStringNode(String tagName, Element element) {
+        NodeList list = element.getElementsByTagName(tagName);
+        if (list != null && list.getLength() > 0) {
+            NodeList subList = list.item(0).getChildNodes();
+
+            if (subList != null && subList.getLength() > 0) {
+                return subList.item(0).getNodeValue();
+            }
+        }
+
+        return null;
+    }
+
+}
