@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<api xmlns="http://ws.apache.org/ns/synapse"
+     name="TibcoStub"
+     context="/tibcostub">
+   <resource methods="GET" uri-template="/getSubscriberStatus/{msisdn}">
+      <inSequence>
+         <payloadFactory media-type="xml">
+            <format>
+               <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">
+                  <SOAP-ENV:Body>
+                     <ns0:Response xmlns:ns0="http://www.mobilink.com.pk/schemas/MEFBusinessServices/Common/GenericAgreement.xsd">
+                        <ns0:HeaderRes>
+                           <ns0:Status>OK</ns0:Status>
+                        </ns0:HeaderRes>
+                        <ns0:Body>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;ns0:GetSubscriberStatusOut xmlns:ns0="http://www.mobilink.com.pk/schemas/Services/MEFBusinessServices/BusinessServices/CustomerManagement/GetSubscriberStatus/GetSubscriberStatus.xsd"&gt;&lt;ns0:SubscriberType&gt;Prepaid&lt;/ns0:SubscriberType&gt;&lt;ns0:SubscriberStatus&gt;Active&lt;/ns0:SubscriberStatus&gt;&lt;ns0:Jazz&gt;&lt;ns0:Mobilink&gt;Mobilink&lt;/ns0:Mobilink&gt;&lt;/ns0:Jazz&gt;&lt;ns0:Field1/&gt;&lt;ns0:Field2&gt;GSM Prepaid Jazba&lt;/ns0:Field2&gt;&lt;ns0:Field3/&gt;&lt;/ns0:GetSubscriberStatusOut&gt;</ns0:Body>
+                     </ns0:Response>
+                  </SOAP-ENV:Body>
+               </SOAP-ENV:Envelope>
+            </format>
+            <args/>
+         </payloadFactory>
+         <respond/>
+      </inSequence>
+   </resource>
+</api>

@@ -1,0 +1,959 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sequence xmlns="http://ws.apache.org/ns/synapse"
+          name="RefundSubscriberResponse"
+          onError="conf:/faultRefund">
+   <log level="custom">
+      <property name="###############################RefundSubscriberResponse Started#############################"
+                value="******************RefundSubscriberResponse Started****************************************"/>
+      <property xmlns:ns="http://org.apache.synapse/xsd"
+                name="TransactionId"
+                expression="get-property('TransactionId')"/>
+      <property xmlns:ns="http://org.apache.synapse/xsd"
+                name="TransactionId"
+                expression="get-property('TransactionId')"/>
+      <property xmlns:ns="http://org.apache.synapse/xsd"
+                name="CorrelationID"
+                expression="get-property('CorrelationID')"/>
+   </log>
+   <log level="full"/>
+   <class name="com.arcana.rfr.Rfr"/>
+   <log level="custom">
+      <property xmlns:ns="http://org.apache.synapse/xsd"
+                name="start"
+                expression="get-property('status')"/>
+   </log>
+   <property name="start"
+             value="******************After RFR class ****************************************"/>
+   <switch xmlns:ns="http://org.apache.synapse/xsd" source="get-property('status')">
+      <case regex="KO">
+         <log level="custom">
+            <property name="start"
+                      value="******************start****************************************"/>
+         </log>
+         <dbreport>
+            <connection>
+               <pool>
+                  <dsName>jdbc/ott</dsName>
+               </pool>
+            </connection>
+            <statement>
+               <sql>
+							Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET STATUS = 'KO' , CAUSE = 'ALREADY_CHARGED' WHERE CORRELATION_ID= ? and TRANSACTION_ID = ? and INTERFACE_NAME= 'RefundSubscriberResponse'	
+					</sql>
+               <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+               <parameter expression="$ctx:TransactionId" type="CHAR"/>
+            </statement>
+         </dbreport>
+         <payloadFactory media-type="xml">
+            <format>
+               <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                                 xmlns:urn="urn:vimpelcom:carrier-billing-hub:types">
+                  <soapenv:Header/>
+                  <soapenv:Body>
+                     <urn:RefundSubscriberCallback>
+                        <urn:CorrelationId>$1</urn:CorrelationId>
+                        <urn:TransactionId>$2</urn:TransactionId>
+                        <urn:Result>ALREADY_RELEASED</urn:Result>
+                        <urn:Message/>
+                     </urn:RefundSubscriberCallback>
+                  </soapenv:Body>
+               </soapenv:Envelope>
+            </format>
+            <args>
+               <arg evaluator="xml" expression="get-property('CorrelationID')"/>
+               <arg evaluator="xml" expression="get-property('TransactionId')"/>
+            </args>
+         </payloadFactory>
+         <header name="Action"
+                 value="urn:vimpelcom:carrier-billing-hub:opco-interaction:soap:refund-subscriber-response"/>
+         <property name="DISABLE_CHUNKING" value="true" scope="axis2"/>
+         <header name="User-Agent" scope="transport" value="Apache-HttpClient/4.1.1"/>
+         <log level="full"/>
+         <call>
+            <endpoint>
+               <address uri="http://10.50.13.129:8282/GDCBCallback" format="soap11"/>
+            </endpoint>
+         </call>
+         <log level="full"/>
+         <log level="custom">
+            <property name="###############################ALREDYCHARGED#############################"
+                      value="******************ALREDYCHARGED****************************************"/>
+         </log>
+         <drop/>
+      </case>
+      <default/>
+   </switch>
+   <class name="com.arcana.rs.RefundSubscriber"/>
+   <switch xmlns:ns="http://org.apache.synapse/xsd" source="get-property('status')">
+      <case regex="OK">
+         <log level="custom">
+            <property name="###############################OKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK#############################"
+                      value="******************OKKKKKKKKKKKKKKKKKKKKKKKKKKKK****************************************"/>
+         </log>
+         <dbreport>
+            <connection>
+               <pool>
+                  <dsName>jdbc/ott</dsName>
+               </pool>
+            </connection>
+            <statement>
+               <sql>
+						INSERT INTO OTTHub_Wso2.HUB_TRANSACTION_STORE (CORRELATION_ID, TRANSACTION_ID, INTERFACE_NAME, STATUS, TIMEIN) VALUES (?,?,'RefundSubscriberResponse','OK',NOW())
+					</sql>
+               <parameter expression="get-property('CorrelationID')" type="VARCHAR"/>
+               <parameter expression="get-property('TransactionId')" type="VARCHAR"/>
+            </statement>
+         </dbreport>
+         <payloadFactory media-type="xml">
+            <format>
+               <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                                 xmlns:urn="urn:vimpelcom:carrier-billing-hub:types">
+                  <soapenv:Header/>
+                  <soapenv:Body>
+                     <urn:RefundSubscriberCallback>
+                        <urn:CorrelationId>$1</urn:CorrelationId>
+                        <urn:TransactionId>$2</urn:TransactionId>
+                        <urn:Result>SUCCESS</urn:Result>
+                        <urn:Message/>
+                     </urn:RefundSubscriberCallback>
+                  </soapenv:Body>
+               </soapenv:Envelope>
+            </format>
+            <args>
+               <arg evaluator="xml" expression="get-property('CorrelationID')"/>
+               <arg evaluator="xml" expression="get-property('TransactionId')"/>
+            </args>
+         </payloadFactory>
+         <header name="Action"
+                 value="urn:vimpelcom:carrier-billing-hub:opco-interaction:soap:refund-subscriber-response"/>
+         <property name="DISABLE_CHUNKING" value="true" scope="axis2"/>
+         <header name="User-Agent" scope="transport" value="Apache-HttpClient/4.1.1"/>
+         <log level="full"/>
+         <call>
+            <endpoint>
+               <address uri="http://10.50.13.129:8282/GDCBCallback" format="soap11"/>
+            </endpoint>
+         </call>
+         <log level="full"/>
+      </case>
+      <case regex="KO">
+         <log level="custom">
+            <property name="###############################KOOOOOOOOOOOOOOOOOOOOOO#############################"
+                      value="******************KOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO****************************************"/>
+         </log>
+         <log level="custom">
+            <property name="CAUSE" expression="$ctx:CAUSE"/>
+         </log>
+         <payloadFactory media-type="xml">
+            <format>
+               <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                                 xmlns:urn="urn:vimpelcom:carrier-billing-hub:types">
+                  <soapenv:Header/>
+                  <soapenv:Body>
+                     <urn:RefundSubscriberCallback>
+                        <urn:CorrelationId>$1</urn:CorrelationId>
+                        <urn:TransactionId>$2</urn:TransactionId>
+                        <urn:Result>$3</urn:Result>
+                        <urn:Message/>
+                     </urn:RefundSubscriberCallback>
+                  </soapenv:Body>
+               </soapenv:Envelope>
+            </format>
+            <args>
+               <arg evaluator="xml" expression="get-property('CorrelationID')"/>
+               <arg evaluator="xml" expression="get-property('TransactionId')"/>
+               <arg evaluator="xml" expression="$ctx:CAUSE"/>
+            </args>
+         </payloadFactory>
+         <header name="Action"
+                 value="urn:vimpelcom:carrier-billing-hub:opco-interaction:soap:refund-subscriber-response"/>
+         <property name="DISABLE_CHUNKING" value="true" scope="axis2"/>
+         <header name="User-Agent" scope="transport" value="Apache-HttpClient/4.1.1"/>
+         <log level="full"/>
+         <call>
+            <endpoint>
+               <address uri="http://10.50.13.129:8282/GDCBCallback" format="soap11"/>
+            </endpoint>
+         </call>
+         <log level="full"/>
+      </case>
+      <default>
+         <log level="custom">
+            <property name="###############################NOT FOUND#############################"
+                      value="******************NOT FOUND****************************************"/>
+         </log>
+         <dbreport>
+            <connection>
+               <pool>
+                  <dsName>jdbc/ott</dsName>
+               </pool>
+            </connection>
+            <statement>
+               <sql>
+							INSERT INTO OTTHub_Wso2.HUB_TRANSACTION_STORE (CORRELATION_ID, TRANSACTION_ID, INTERFACE_NAME, STATUS, TIMEIN) VALUES (?,?,'RefundSubscriberResponse','OK',NOW())		
+					</sql>
+               <parameter expression="get-property('CorrelationID')" type="VARCHAR"/>
+               <parameter expression="get-property('TransactionId')" type="VARCHAR"/>
+            </statement>
+         </dbreport>
+         <dblookup>
+            <connection>
+               <pool>
+                  <dsName>jdbc/ott</dsName>
+               </pool>
+            </connection>
+            <statement>
+               <sql>
+							select Status, TIMEIN from OTTHub_Wso2.HUB_TRANSACTION_STORE  WHERE CORRELATION_ID = ? AND INTERFACE_NAME= 'RefundSubscriberResponse' ORDER BY TIMEIN DESC LIMIT 1  	
+					</sql>
+               <parameter expression="get-property('CorrelationID')" type="VARCHAR"/>
+               <result name="ReserveFunds" column="STATUS"/>
+               <result name="TIMEIN" column="TIMEIN"/>
+            </statement>
+         </dblookup>
+         <log level="custom">
+            <property name="STATUS" expression="get-property('ReserveFunds')"/>
+            <property name="TIMEIN" expression="get-property('TIMEIN')"/>
+         </log>
+         <class name="com.arcana.cto.cto"/>
+         <log level="custom">
+            <property name="result" expression="get-property('result')"/>
+         </log>
+         <filter source="get-property('result')" regex="OK">
+            <then>
+               <log level="custom">
+                  <property name="-------CTO is OK---------" value="-------CTO IS OK---------"/>
+               </log>
+               <class name="com.arcana.crs.Crs"/>
+               <log level="custom">
+                  <property name="status" expression="get-property('status')"/>
+               </log>
+               <dblookup>
+                  <connection>
+                     <pool>
+                        <dsName>jdbc/ott</dsName>
+                     </pool>
+                  </connection>
+                  <statement>
+                     <sql>
+									select * from HUB_TRANSACTION_STORE  WHERE CORRELATION_ID = ? AND INTERFACE_NAME= 'ReserveFunds' ORDER BY TIMEIN DESC LIMIT 1 	
+							</sql>
+                     <parameter expression="get-property('CorrelationID')" type="VARCHAR"/>
+                     <result name="MSISDN" column="MSISDN"/>
+                     <result name="AMOUNT" column="AMOUNT"/>
+                     <result name="DESCRIPTION" column="DESCRIPTION"/>
+                     <result name="SUBSCRIBER_TYPE" column="SUBSCRIBER_TYPE"/>
+                  </statement>
+               </dblookup>
+               <switch source="get-property('status')">
+                  <case regex="KO">
+                     <log level="custom">
+                        <property name="start"
+                                  value="******************start****************************************"/>
+                     </log>
+                     <dbreport>
+                        <connection>
+                           <pool>
+                              <dsName>jdbc/ott</dsName>
+                           </pool>
+                        </connection>
+                        <statement>
+                           <sql>
+											Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET   STATUS = 'KO' , CAUSE = 'ALREADY_CHARGED' WHERE CORRELATION_ID= ? and TRANSACTION_ID = ? and INTERFACE_NAME= 'RefundSubscriberResponse'	
+									</sql>
+                           <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                           <parameter expression="$ctx:TransactionId" type="CHAR"/>
+                        </statement>
+                     </dbreport>
+                     <payloadFactory media-type="xml">
+                        <format>
+                           <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                                             xmlns:urn="urn:vimpelcom:carrier-billing-hub:types">
+                              <soapenv:Header/>
+                              <soapenv:Body>
+                                 <urn:RefundSubscriberCallback>
+                                    <urn:CorrelationId>$1</urn:CorrelationId>
+                                    <urn:TransactionId>$2</urn:TransactionId>
+                                    <urn:Result>NOT_CHARGED</urn:Result>
+                                    <urn:Message/>
+                                 </urn:RefundSubscriberCallback>
+                              </soapenv:Body>
+                           </soapenv:Envelope>
+                        </format>
+                        <args>
+                           <arg evaluator="xml" expression="get-property('CorrelationID')"/>
+                           <arg evaluator="xml" expression="get-property('TransactionId')"/>
+                        </args>
+                     </payloadFactory>
+                     <header name="Action"
+                             value="urn:vimpelcom:carrier-billing-hub:opco-interaction:soap:refund-subscriber-response"/>
+                     <property name="DISABLE_CHUNKING" value="true" scope="axis2"/>
+                     <header name="User-Agent" scope="transport" value="Apache-HttpClient/4.1.1"/>
+                     <log level="full"/>
+                     <call>
+                        <endpoint>
+                           <address uri="http://10.50.13.129:8282/GDCBCallback" format="soap11"/>
+                        </endpoint>
+                     </call>
+                     <log level="full"/>
+                     <log level="custom">
+                        <property name="###############################ALREDYCHARGED#############################"
+                                  value="******************ALREDYCHARGED****************************************"/>
+                     </log>
+                  </case>
+                  <case regex="OK">
+                     <log level="custom">
+                        <property name="********DEFAULT EXECUTED********"
+                                  value="**************************DEFAULT EXECUTED************************************************"/>
+                     </log>
+                     <log>
+                        <property name="AMOUNT" expression="get-property('AMOUNT')"/>
+                        <property name="SUBSCRIBER_TYPE" expression="get-property('SUBSCRIBER_TYPE')"/>
+                        <property name="NORMALIZED_MSISDN_FOR_IN"
+                                  expression="fn:concat('',fn:substring(get-property('MSISDN'),3))"/>
+                        <property name="DESCRIPTION" expression="get-property('DESCRIPTION')"/>
+                     </log>
+                     <property name="MSISDN_RESERVE" expression="get-property('MSISDN')"/>
+                     <property name="NORMALIZED_MSISDN_FOR_IN"
+                               expression="fn:concat('',fn:substring(get-property('MSISDN'),3))"/>
+                     <property name="MSISDN" expression="get-property('NORMALIZED_MSISDN_FOR_IN')"/>
+                     <property name="ChargeAmount" expression="get-property('AMOUNT')"/>
+                     <property name="SUBSCRIBER_TYPE" expression="get-property('SUBSCRIBER_TYPE')"/>
+                     <property name="MSISDN"
+                               expression="fn:concat('',fn:substring(get-property('MSISDN'),3))"
+                               scope="default"
+                               type="STRING"/>
+                     <property name="DESCRIPTION" expression="get-property('DESCRIPTION')"/>
+                     <log>
+                        <property name="ChargeAmount" expression="get-property('ChargeAmount')"/>
+                     </log>
+                     <filter source="get-property('SUBSCRIBER_TYPE')" regex="PREPAID">
+                        <then>
+                           <property name="ChargeAmount" expression="fn:concat(($ctx:AMOUNT),'00')"/>
+                           <class name="com.arcana.convert.micros"/>
+                           <property name="ChargeAmount" expression="get-property('pkr')"/>
+                           <log>
+                              <property name="INcall" value="CALLING PREPAID IN"/>
+                           </log>
+                           <payloadFactory media-type="xml">
+                              <format>
+                                 <methodCall xmlns="">
+                                    <methodName>UpdateBalanceAndDate</methodName>
+                                    <params>
+                                       <param>
+                                          <value>
+                                             <struct>
+                                                <member>
+                                                   <name>originNodeType</name>
+                                                   <value>
+                                                      <string>EXT</string>
+                                                   </value>
+                                                </member>
+                                                <member>
+                                                   <name>originHostName</name>
+                                                   <value>
+                                                      <string>GoogleDCBChargeRelease</string>
+                                                   </value>
+                                                </member>
+                                                <member>
+                                                   <name>originTransactionID</name>
+                                                   <value>
+                                                      <string>1213123</string>
+                                                   </value>
+                                                </member>
+                                                <member>
+                                                   <name>transactionType</name>
+                                                   <value>
+                                                      <string>test</string>
+                                                   </value>
+                                                </member>
+                                                <member>
+                                                   <name>transactionCode</name>
+                                                   <value>
+                                                      <string>GoogleDCBChargeRelease</string>
+                                                   </value>
+                                                </member>
+                                                <member>
+                                                   <name>externalData1</name>
+                                                   <value>
+                                                      <string>GoogleDCB_VAS</string>
+                                                   </value>
+                                                </member>
+                                                <member>
+                                                   <name>externalData2</name>
+                                                   <value>
+                                                      <string>$4</string>
+                                                   </value>
+                                                </member>
+                                                <member>
+                                                   <name>originTimeStamp</name>
+                                                   <value>
+                                                      <dateTime.iso8601>20121228T19:00:27+0500</dateTime.iso8601>
+                                                   </value>
+                                                </member>
+                                                <member>
+                                                   <name>transactionCurrency</name>
+                                                   <value>
+                                                      <string>PKR</string>
+                                                   </value>
+                                                </member>
+                                                <member>
+                                                   <name>subscriberNumber</name>
+                                                   <value>
+                                                      <string>$1</string>
+                                                   </value>
+                                                </member>
+                                                <member>
+                                                   <name>adjustmentAmountRelative</name>
+                                                   <value>
+                                                      <string>$3</string>
+                                                   </value>
+                                                </member>
+                                             </struct>
+                                          </value>
+                                       </param>
+                                    </params>
+                                 </methodCall>
+                              </format>
+                              <args>
+                                 <arg evaluator="xml" expression="$ctx:NORMALIZED_MSISDN_FOR_IN"/>
+                                 <arg evaluator="xml" expression="$ctx:TransactionId"/>
+                                 <arg evaluator="xml" expression="get-property('ChargeAmount')"/>
+                                 <arg evaluator="xml" expression="$ctx:DESCRIPTION"/>
+                              </args>
+                           </payloadFactory>
+                           <header name="User-Agent" scope="transport" value="UGw Server/4.3/1.0"/>
+                           <header name="Authorization"
+                                   scope="transport"
+                                   value="Basic SU5UQUNBR0Q6UGF0Y2gjMTIz"/>
+                           <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                           <property name="DISABLE_CHUNKING"
+                                     value="true"
+                                     scope="axis2"
+                                     type="STRING"/>
+                           <log level="full"/>
+                           <call>
+                              <endpoint name="IN_EP">
+                                 <http format="rest"
+                                       method="POST"
+                                       uri-template="http://10.13.32.156:10010/Air">
+                                    <timeout>
+                                       <duration>10000</duration>
+                                       <responseAction>fault</responseAction>
+                                    </timeout>
+                                    <suspendOnFailure>
+                                       <errorCodes>-1</errorCodes>
+                                       <initialDuration>0</initialDuration>
+                                       <progressionFactor>1.0</progressionFactor>
+                                       <maximumDuration>0</maximumDuration>
+                                    </suspendOnFailure>
+                                    <markForSuspension>
+                                       <errorCodes>-1</errorCodes>
+                                    </markForSuspension>
+                                 </http>
+                              </endpoint>
+                           </call>
+                           <log level="full">
+                              <property name="AIN Response" value="*** Printing IN Response ***"/>
+                           </log>
+                           <filter xpath="$body//methodResponse/params/param/value/struct/member[name='responseCode']/value/i4='102' or $body//methodResponse/params/param/value/struct/member[name='responseCode']/value/i4='99003' or $body//methodResponse/params/param/value/struct/member[name='responseCode']/value/i4='53078' or $body//methodResponse/params/param/value/struct/member[name='responseCode']/value/i4='71065'">
+                              <then>
+                                 <dbreport>
+                                    <connection>
+                                       <pool>
+                                          <dsName>jdbc/ott</dsName>
+                                       </pool>
+                                    </connection>
+                                    <statement>
+                                       <sql>
+															Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET STATUS = 'KO' , CAUSE = 'SUBSCRIBER_NOT_FOUND' ,`DESCRIPTION`='Subscriber cannot be found using IMSI provided.' WHERE CORRELATION_ID= ? and TRANSACTION_ID = ? and INTERFACE_NAME= 'RefundSubscriberResponse'	
+													</sql>
+                                       <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                                       <parameter expression="$ctx:TransactionId" type="CHAR"/>
+                                    </statement>
+                                 </dbreport>
+                                 <payloadFactory media-type="xml">
+                                    <format>
+                                       <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                                                         xmlns:urn="urn:vimpelcom:carrier-billing-hub:types">
+                                          <soapenv:Header/>
+                                          <soapenv:Body>
+                                             <urn:RefundSubscriberCallback>
+                                                <urn:CorrelationId>$1</urn:CorrelationId>
+                                                <urn:TransactionId>$2</urn:TransactionId>
+                                                <urn:Result>SUBSCRIBER_NOT_FOUND</urn:Result>
+                                                <urn:Message/>
+                                             </urn:RefundSubscriberCallback>
+                                          </soapenv:Body>
+                                       </soapenv:Envelope>
+                                    </format>
+                                    <args>
+                                       <arg evaluator="xml" expression="get-property('CorrelationID')"/>
+                                       <arg evaluator="xml" expression="get-property('TransactionId')"/>
+                                    </args>
+                                 </payloadFactory>
+                                 <header name="Action"
+                                         value="urn:vimpelcom:carrier-billing-hub:opco-interaction:soap:refund-subscriber-response"/>
+                                 <property name="DISABLE_CHUNKING" value="true" scope="axis2"/>
+                                 <header name="User-Agent" scope="transport" value="Apache-HttpClient/4.1.1"/>
+                                 <log level="full"/>
+                                 <call>
+                                    <endpoint>
+                                       <address uri="http://10.50.13.129:8282/GDCBCallback" format="soap11"/>
+                                    </endpoint>
+                                 </call>
+                                 <log level="full"/>
+                              </then>
+                           </filter>
+                           <filter xpath="$body//methodResponse/params/param/value/struct/member[name='responseCode']/value/i4='0' ">
+                              <then>
+                                 <dbreport>
+                                    <connection>
+                                       <pool>
+                                          <dsName>jdbc/ott</dsName>
+                                       </pool>
+                                    </connection>
+                                    <statement>
+                                       <sql>
+															Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET AMOUNT = ?, MSISDN = ?, STATUS = 'OK' , CAUSE = 'SUCCESS' ,`DESCRIPTION`= ? WHERE CORRELATION_ID= ? and  TRANSACTION_ID = ? and  INTERFACE_NAME= 'RefundSubscriberResponse'	
+													</sql>
+                                       <parameter expression="$ctx:AMOUNT" type="VARCHAR"/>
+                                       <parameter expression="$ctx:MSISDN_RESERVE" type="VARCHAR"/>
+                                       <parameter expression="$ctx:DESCRIPTION" type="VARCHAR"/>
+                                       <parameter expression="$ctx:CorrelationID" type="VARCHAR"/>
+                                       <parameter expression="$ctx:TransactionId" type="VARCHAR"/>
+                                    </statement>
+                                 </dbreport>
+                                 <payloadFactory media-type="xml">
+                                    <format>
+                                       <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                                                         xmlns:urn="urn:vimpelcom:carrier-billing-hub:types">
+                                          <soapenv:Header/>
+                                          <soapenv:Body>
+                                             <urn:RefundSubscriberCallback>
+                                                <urn:CorrelationId>$1</urn:CorrelationId>
+                                                <urn:TransactionId>$2</urn:TransactionId>
+                                                <urn:Result>SUCCESS</urn:Result>
+                                                <urn:Message/>
+                                             </urn:RefundSubscriberCallback>
+                                          </soapenv:Body>
+                                       </soapenv:Envelope>
+                                    </format>
+                                    <args>
+                                       <arg evaluator="xml" expression="get-property('CorrelationID')"/>
+                                       <arg evaluator="xml" expression="get-property('TransactionId')"/>
+                                    </args>
+                                 </payloadFactory>
+                                 <header name="Action"
+                                         value="urn:vimpelcom:carrier-billing-hub:opco-interaction:soap:refund-subscriber-response"/>
+                                 <property name="DISABLE_CHUNKING" value="true" scope="axis2"/>
+                                 <header name="User-Agent" scope="transport" value="Apache-HttpClient/4.1.1"/>
+                                 <log level="full"/>
+                                 <call>
+                                    <endpoint>
+                                       <address uri="http://10.50.13.129:8282/GDCBCallback" format="soap11"/>
+                                    </endpoint>
+                                 </call>
+                                 <log level="full"/>
+                              </then>
+                           </filter>
+                        </then>
+                        <else/>
+                     </filter>
+                     <filter source="get-property('SUBSCRIBER_TYPE')" regex="POSTPAID">
+                        <then>
+                           <property name="ChargeAmount" expression="fn:concat(($ctx:AMOUNT),'000')"/>
+                           <class name="com.arcana.convert.micros"/>
+                           <property name="AMOUNT_PKR" expression="get-property('pkr')"/>
+                           <class name="com.arcana.rs.RefundPostpaid"/>
+                           <log level="custom">
+                              <property name="POSTPAID Response" expression="$ctx:Response"/>
+                           </log>
+                           <filter xpath="fn:contains($ctx:Response,'75071') or fn:contains($ctx:Response,'89100') or fn:contains($ctx:Response,'92000')">
+                              <then>
+                                 <property name="FORCE_ERROR_ON_SOAP_FAULT"
+                                           value="true"
+                                           scope="default"
+                                           type="STRING"/>
+                                 <dbreport>
+                                    <connection>
+                                       <pool>
+                                          <dsName>jdbc/ott</dsName>
+                                       </pool>
+                                    </connection>
+                                    <statement>
+                                       <sql>
+														Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET  TRANSACTION_ID = ? , STATUS = 'KO' , CAUSE = 'SUBSCRIBER_NOT_FOUND' ,`DESCRIPTION`="SUBSCRIBER_NOT_FOUND." WHERE CORRELATION_ID= ? and INTERFACE_NAME= ''
+													</sql>
+                                       <parameter expression="$ctx:TransactionId" type="VARCHAR"/>
+                                       <parameter expression="$ctx:CorrelationID" type="VARCHAR"/>
+                                    </statement>
+                                 </dbreport>
+                                 <payloadFactory media-type="xml">
+                                    <format>
+                                       <ns:LogicalFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                        xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                                        xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                                        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                                          <ns:CorrelationId>$1</ns:CorrelationId>
+                                          <ns:Cause>SUBSCRIBER_NOT_FOUND</ns:Cause>
+                                          <ns:Message>SUBSCRIBER_NOT_FOUND</ns:Message>
+                                          <ns:UserMessage>SUBSCRIBER_NOT_FOUND</ns:UserMessage>
+                                       </ns:LogicalFault>
+                                    </format>
+                                    <args>
+                                       <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                                    </args>
+                                 </payloadFactory>
+                                 <makefault version="soap11">
+                                    <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                                          value="soap11Env:Server"/>
+                                    <reason value="This is an operation implementation generated fault"/>
+                                    <role/>
+                                    <detail expression="$body/ns:LogicalFault"/>
+                                 </makefault>
+                                 <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                                 <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                                 <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                                 <header name="To" action="remove"/>
+                                 <log level="full"/>
+                                 <respond/>
+                              </then>
+                              <else/>
+                           </filter>
+                           <switch source="get-property('REFUND_STATUS')">
+                              <case regex="TRUE">
+                                 <dbreport>
+                                    <connection>
+                                       <pool>
+                                          <dsName>jdbc/ott</dsName>
+                                       </pool>
+                                    </connection>
+                                    <statement>
+                                       <sql>
+															Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET AMOUNT = ?, MSISDN = ?, STATUS = 'OK' , CAUSE = 'SUCCESS' ,`DESCRIPTION`= ? WHERE CORRELATION_ID= ? and  TRANSACTION_ID = ? and  INTERFACE_NAME= 'RefundSubscriberResponse'	
+													</sql>
+                                       <parameter expression="$ctx:AMOUNT" type="VARCHAR"/>
+                                       <parameter expression="$ctx:MSISDN_RESERVE" type="VARCHAR"/>
+                                       <parameter expression="$ctx:DESCRIPTION" type="VARCHAR"/>
+                                       <parameter expression="$ctx:CorrelationID" type="VARCHAR"/>
+                                       <parameter expression="$ctx:TransactionId" type="VARCHAR"/>
+                                    </statement>
+                                 </dbreport>
+                                 <log level="full"/>
+                                 <payloadFactory media-type="xml">
+                                    <format>
+                                       <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">
+                                          <SOAP-ENV:Body>
+                                             <ns0:RefundSubscriberCallback xmlns:ns0="urn:vimpelcom:carrier-billing-hub:types">
+                                                <ns0:CorrelationId>$1</ns0:CorrelationId>
+                                                <ns0:TransactionId>$2</ns0:TransactionId>
+                                                <ns0:Result>SUCCESS</ns0:Result>
+                                                <ns0:Message>SUCCESS</ns0:Message>
+                                             </ns0:RefundSubscriberCallback>
+                                          </SOAP-ENV:Body>
+                                       </SOAP-ENV:Envelope>
+                                    </format>
+                                    <args>
+                                       <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                                       <arg evaluator="xml" expression="$ctx:TransactionId"/>
+                                    </args>
+                                 </payloadFactory>
+                                 <header name="Action"
+                                         value="urn:vimpelcom:carrier-billing-hub:opco-interaction:soap:refund-subscriber-response"/>
+                                 <property name="DISABLE_CHUNKING" value="true" scope="axis2"/>
+                                 <header name="User-Agent" scope="transport" value="Apache-HttpClient/4.1.1"/>
+                                 <log level="full"/>
+                                 <call>
+                                    <endpoint>
+                                       <address uri="http://10.50.13.129:8282/GDCBCallback" format="soap11"/>
+                                    </endpoint>
+                                 </call>
+                                 <log level="full"/>
+                                 <drop/>
+                              </case>
+                              <case regex="FALSE">
+                                 <dbreport>
+                                    <connection>
+                                       <pool>
+                                          <dsName>jdbc/ott</dsName>
+                                       </pool>
+                                    </connection>
+                                    <statement>
+                                       <sql>
+															Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET AMOUNT = ?, MSISDN = ? , STATUS = 'OK' , CAUSE = 'SUCCESS' ,`DESCRIPTION`= ? WHERE CORRELATION_ID= ? and  TRANSACTION_ID = ? and  INTERFACE_NAME= 'RefundSubscriberResponse'	
+													</sql>
+                                       <parameter expression="$ctx:AMOUNT" type="VARCHAR"/>
+                                       <parameter expression="$ctx:MSISDN_RESERVE" type="VARCHAR"/>
+                                       <parameter expression="$ctx:DESCRIPTION" type="VARCHAR"/>
+                                       <parameter expression="$ctx:CorrelationID" type="VARCHAR"/>
+                                       <parameter expression="$ctx:TransactionId" type="VARCHAR"/>
+                                    </statement>
+                                 </dbreport>
+                                 <payloadFactory media-type="xml">
+                                    <format>
+                                       <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                                                         xmlns:urn="urn:vimpelcom:carrier-billing-hub:types">
+                                          <soapenv:Header/>
+                                          <soapenv:Body>
+                                             <urn:RefundSubscriberCallback>
+                                                <urn:CorrelationId>$1</urn:CorrelationId>
+                                                <urn:TransactionId>$2</urn:TransactionId>
+                                                <urn:Result>SUCCESS</urn:Result>
+                                                <urn:Message/>
+                                             </urn:RefundSubscriberCallback>
+                                          </soapenv:Body>
+                                       </soapenv:Envelope>
+                                    </format>
+                                    <args>
+                                       <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                                       <arg evaluator="xml" expression="get-property('TransactionId')"/>
+                                    </args>
+                                 </payloadFactory>
+                                 <header name="Action"
+                                         value="urn:vimpelcom:carrier-billing-hub:opco-interaction:soap:refund-subscriber-response"/>
+                                 <property name="DISABLE_CHUNKING" value="true" scope="axis2"/>
+                                 <header name="User-Agent" scope="transport" value="Apache-HttpClient/4.1.1"/>
+                                 <log level="full"/>
+                                 <call>
+                                    <endpoint>
+                                       <address uri="http://10.50.13.129:8282/GDCBCallback" format="soap11"/>
+                                    </endpoint>
+                                 </call>
+                                 <log level="full"/>
+                                 <drop/>
+                              </case>
+                              <case regex="timeout">
+                                 <dbreport>
+                                    <connection>
+                                       <pool>
+                                          <dsName>jdbc/ott</dsName>
+                                       </pool>
+                                    </connection>
+                                    <statement>
+                                       <sql>
+															Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET STATUS = 'SYSTEM_BUSY' , CAUSE = 'SYSTEM_BUSY' ,`DESCRIPTION`='GENERAL_DECLINE' WHERE CORRELATION_ID= ? and  TRANSACTION_ID = ? and INTERFACE_NAME= 'RefundSubscriberResponse'	
+													</sql>
+                                       <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                                       <parameter expression="$ctx:TransactionId" type="CHAR"/>
+                                    </statement>
+                                 </dbreport>
+                                 <payloadFactory media-type="xml">
+                                    <format>
+                                       <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                                                         xmlns:urn="urn:vimpelcom:carrier-billing-hub:types">
+                                          <soapenv:Header/>
+                                          <soapenv:Body>
+                                             <urn:RefundSubscriberCallback>
+                                                <urn:CorrelationId>$1</urn:CorrelationId>
+                                                <urn:TransactionId>$2</urn:TransactionId>
+                                                <urn:Result>SYSTEM_BUSY</urn:Result>
+                                                <urn:Message/>
+                                             </urn:RefundSubscriberCallback>
+                                          </soapenv:Body>
+                                       </soapenv:Envelope>
+                                    </format>
+                                    <args>
+                                       <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                                       <arg evaluator="xml" expression="get-property('TransactionId')"/>
+                                    </args>
+                                 </payloadFactory>
+                                 <header name="Action"
+                                         value="urn:vimpelcom:carrier-billing-hub:opco-interaction:soap:refund-subscriber-response"/>
+                                 <property name="DISABLE_CHUNKING" value="true" scope="axis2"/>
+                                 <header name="User-Agent" scope="transport" value="Apache-HttpClient/4.1.1"/>
+                                 <log level="full"/>
+                                 <call>
+                                    <endpoint>
+                                       <address uri="http://10.50.13.129:8282/GDCBCallback" format="soap11"/>
+                                    </endpoint>
+                                 </call>
+                                 <log level="full"/>
+                                 <drop/>
+                              </case>
+                           </switch>
+                        </then>
+                        <else/>
+                     </filter>
+                  </case>
+                  <default>
+                     <log level="custom">
+                        <property name="start"
+                                  value="******************start****************************************"/>
+                     </log>
+                     <dbreport>
+                        <connection>
+                           <pool>
+                              <dsName>jdbc/ott</dsName>
+                           </pool>
+                        </connection>
+                        <statement>
+                           <sql>
+											Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET STATUS = 'KO' , CAUSE = 'INVALID_CORRELATION_ID' WHERE CORRELATION_ID= ? and  TRANSACTION_ID = ? and INTERFACE_NAME= 'RefundSubscriberResponse'	
+									</sql>
+                           <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                           <parameter expression="$ctx:TransactionId" type="CHAR"/>
+                        </statement>
+                     </dbreport>
+                     <payloadFactory media-type="xml">
+                        <format>
+                           <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                                             xmlns:urn="urn:vimpelcom:carrier-billing-hub:types">
+                              <soapenv:Header/>
+                              <soapenv:Body>
+                                 <urn:RefundSubscriberCallback>
+                                    <urn:CorrelationId>$1</urn:CorrelationId>
+                                    <urn:TransactionId>$2</urn:TransactionId>
+                                    <urn:Result>NOT_CHARGED</urn:Result>
+                                    <urn:Message/>
+                                 </urn:RefundSubscriberCallback>
+                              </soapenv:Body>
+                           </soapenv:Envelope>
+                        </format>
+                        <args>
+                           <arg evaluator="xml" expression="get-property('CorrelationID')"/>
+                           <arg evaluator="xml" expression="get-property('TransactionId')"/>
+                        </args>
+                     </payloadFactory>
+                     <header name="Action"
+                             value="urn:vimpelcom:carrier-billing-hub:opco-interaction:soap:refund-subscriber-response"/>
+                     <property name="DISABLE_CHUNKING" value="true" scope="axis2"/>
+                     <header name="User-Agent" scope="transport" value="Apache-HttpClient/4.1.1"/>
+                     <log level="full"/>
+                     <call>
+                        <endpoint>
+                           <address uri="http://10.50.13.129:8282/GDCBCallback" format="soap11"/>
+                        </endpoint>
+                     </call>
+                     <log level="full"/>
+                     <drop/>
+                     <log level="custom">
+                        <property name="###############################ALREDYCHARGED#############################"
+                                  value="******************ALREDYCHARGED****************************************"/>
+                     </log>
+                  </default>
+               </switch>
+            </then>
+         </filter>
+         <filter source="get-property('result')" regex="NR">
+            <then>
+               <log level="custom">
+                  <property name="______________________________NOT RESERVED_____________________________"
+                            value="______________________________NOT RESERVED_____________________________"/>
+               </log>
+               <dbreport>
+                  <connection>
+                     <pool>
+                        <dsName>jdbc/ott</dsName>
+                     </pool>
+                  </connection>
+                  <statement>
+                     <sql>
+									Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET STATUS = 'KO' , CAUSE = 'NOT_CHARGED' WHERE CORRELATION_ID= ? and TRANSACTION_ID = ? and INTERFACE_NAME= 'RefundSubscriberResponse'	
+							</sql>
+                     <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                     <parameter expression="$ctx:TransactionId" type="CHAR"/>
+                  </statement>
+               </dbreport>
+               <payloadFactory media-type="xml">
+                  <format>
+                     <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                                       xmlns:urn="urn:vimpelcom:carrier-billing-hub:types">
+                        <soapenv:Header/>
+                        <soapenv:Body>
+                           <urn:RefundSubscriberCallback>
+                              <urn:CorrelationId>$1</urn:CorrelationId>
+                              <urn:TransactionId>$2</urn:TransactionId>
+                              <urn:Result>NOT_CHARGED</urn:Result>
+                              <urn:Message/>
+                           </urn:RefundSubscriberCallback>
+                        </soapenv:Body>
+                     </soapenv:Envelope>
+                  </format>
+                  <args>
+                     <arg evaluator="xml" expression="get-property('CorrelationID')"/>
+                     <arg evaluator="xml" expression="get-property('TransactionId')"/>
+                  </args>
+               </payloadFactory>
+               <header name="Action"
+                       value="urn:vimpelcom:carrier-billing-hub:opco-interaction:soap:refund-subscriber-response"/>
+               <property name="DISABLE_CHUNKING" value="true" scope="axis2"/>
+               <header name="User-Agent" scope="transport" value="Apache-HttpClient/4.1.1"/>
+               <log level="full"/>
+               <call>
+                  <endpoint>
+                     <address uri="http://10.50.13.129:8282/GDCBCallback" format="soap11"/>
+                  </endpoint>
+               </call>
+               <log level="full"/>
+               <drop/>
+               <log level="custom">
+                  <property name="______________________________NOT RESERVED ENDED_____________________________"
+                            value="______________________________NOT RESERVED ENDED_____________________________"/>
+               </log>
+            </then>
+         </filter>
+         <filter source="get-property('result')" regex="CTO">
+            <then>
+               <log level="custom">
+                  <property name="______________________________CTO_____________________________"
+                            value="______________________________CTO_____________________________"/>
+               </log>
+               <dbreport>
+                  <connection>
+                     <pool>
+                        <dsName>jdbc/ott</dsName>
+                     </pool>
+                  </connection>
+                  <statement>
+                     <sql>
+									Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET STATUS = 'KO' , CAUSE = 'CHARGE_TOO_OLD' WHERE CORRELATION_ID= ? and  TRANSACTION_ID = ? and INTERFACE_NAME= 'RefundSubscriberResponse'	
+							</sql>
+                     <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                     <parameter expression="$ctx:TransactionId" type="CHAR"/>
+                  </statement>
+               </dbreport>
+               <payloadFactory media-type="xml">
+                  <format>
+                     <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                                       xmlns:urn="urn:vimpelcom:carrier-billing-hub:types">
+                        <soapenv:Header/>
+                        <soapenv:Body>
+                           <urn:RefundSubscriberCallback>
+                              <urn:CorrelationId>$1</urn:CorrelationId>
+                              <urn:TransactionId>$2</urn:TransactionId>
+                              <urn:Result>CHARGE_TOO_OLD</urn:Result>
+                              <urn:Message/>
+                           </urn:RefundSubscriberCallback>
+                        </soapenv:Body>
+                     </soapenv:Envelope>
+                  </format>
+                  <args>
+                     <arg evaluator="xml" expression="get-property('CorrelationID')"/>
+                     <arg evaluator="xml" expression="get-property('TransactionId')"/>
+                  </args>
+               </payloadFactory>
+               <header name="Action"
+                       value="urn:vimpelcom:carrier-billing-hub:opco-interaction:soap:refund-subscriber-response"/>
+               <property name="DISABLE_CHUNKING" value="true" scope="axis2"/>
+               <header name="User-Agent" scope="transport" value="Apache-HttpClient/4.1.1"/>
+               <log level="full"/>
+               <call>
+                  <endpoint>
+                     <address uri="http://10.50.13.129:8282/GDCBCallback" format="soap11"/>
+                  </endpoint>
+               </call>
+               <log level="full"/>
+               <log level="custom">
+                  <property name="______________________________CTO ENDED_____________________________"
+                            value="______________________________CTO ENDED_____________________________"/>
+               </log>
+               <drop/>
+            </then>
+         </filter>
+      </default>
+   </switch>
+   <log level="custom">
+      <property name="ReleaseFundResponse Ended" value="ReleaseFundResponse Ended"/>
+   </log>
+</sequence>

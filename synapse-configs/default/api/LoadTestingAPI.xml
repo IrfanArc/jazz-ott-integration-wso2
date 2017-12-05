@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<api xmlns="http://ws.apache.org/ns/synapse"
+     name="LoadTestingAPI"
+     context="/loadtestapi">
+   <resource methods="GET" uri-template="/{subscriberId}">
+      <inSequence>
+         <log level="custom">
+            <property name="INIT" value="--LoadTestingAPI Called--"/>
+         </log>
+         <property name="TRANSACTION_ID"
+                   expression="fn:substring-after(get-property('MessageID'),'urn:uuid:')"
+                   scope="default"
+                   type="STRING"
+                   description="TransactionID"/>
+         <property name="REQ_MSISDN" expression="get-property('uri.var.subscriberId')"/>
+         <!-- Log the incoming request in DB --><property name="RESOURCE_URI" expression="get-property('To')"/>
+         <property name="accesstokenheader" value="" scope="default" type="STRING"/>
+         <property name="API_NAME" value="LoadTestingAPI"/>
+         <property name="INTERFACE_NAME" value="Test"/>
+         <property name="REQ_MSISDN" expression="get-property('uri.var.subscriberId')"/>
+         <enrich>
+            <source type="body" clone="true"/>
+            <target type="property" property="LOG_REQUEST"/>
+         </enrich>
+         <sequence name="LOG_REQUEST_SEQUENCE" statistics="enable" trace="enable">
+            <dbreport>
+               <connection>
+                  <pool>
+                     <dsName>jdbc/ApimLoggingDS</dsName>
+                  </pool>
+               </connection>
+               <statement>
+                  <sql>INSERT INTO veon.apim_log_request(transactionId, apiName, interfaceName, request, msisdn, resourceURI,authorization)  values (?, ?, ?, ?, ?, ?, ?)</sql>
+                  <parameter expression="get-property('TRANSACTION_ID')" type="VARCHAR"/>
+                  <parameter expression="get-property('API_NAME')" type="VARCHAR"/>
+                  <parameter expression="get-property('INTERFACE_NAME')" type="VARCHAR"/>
+                  <parameter expression="get-property('LOG_REQUEST')" type="VARCHAR"/>
+                  <parameter expression="get-property('REQ_MSISDN')" type="VARCHAR"/>
+                  <parameter expression="get-property('RESOURCE_URI')" type="VARCHAR"/>
+                  <parameter expression="get-property('accesstokenheader')" type="VARCHAR"/>
+               </statement>
+            </dbreport>
+         </sequence>
+         <!-- Log request ends --><log level="custom">
+            <property name="REQ_MSISDN" expression="get-property('REQ_MSISDN')"/>
+            <property name="TRANSACTION_ID" expression="get-property('TRANSACTION_ID')"/>
+         </log>
+         <payloadFactory media-type="json" description="ResponseMsg">
+            <format>{"msisdn":"$1","transactionid":"$2"}</format>
+            <args>
+               <arg evaluator="xml" expression="get-property('REQ_MSISDN')"/>
+               <arg evaluator="xml" expression="get-property('TRANSACTION_ID')"/>
+            </args>
+         </payloadFactory>
+         <log level="full"/>
+         <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+         <header name="To" scope="default" expression="get-property('ReplyTo')"/>
+         <property name="HTTP_SC" value="200" scope="axis2" type="STRING"/>
+         <property name="messageType"
+                   value="application/json"
+                   scope="axis2"
+                   type="STRING"/>
+         <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+         <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+         <header name="To" scope="default" action="remove"/>
+         <log level="custom">
+            <property name="SENDINGRESPONSE" value="--LoadTestingAPI END--"/>
+         </log>
+         <!-- Log the API Response here --><property name="JSON_RESPONSE" expression="json-eval($.)"/>
+         <!-- Get the API Name and interface name values from the request properties --><!--property name="API_NAME" value="LoadTestingAPI"/>
+			<property name="INTERFACE_NAME" value="Test"/--><sequence name="LOG_RESPONSE_SEQUENCE" statistics="enable" trace="enable">
+            <dbreport>
+               <connection>
+                  <pool>
+                     <dsName>jdbc/ApimLoggingDS</dsName>
+                  </pool>
+               </connection>
+               <statement>
+                  <sql>INSERT INTO veon.apim_log_response(transactionId, apiName, interfaceName, response, msisdn, status)  values (?, ?, ?, ?, ?, ?)</sql>
+                  <parameter expression="get-property('TRANSACTION_ID')" type="VARCHAR"/>
+                  <parameter expression="get-property('API_NAME')" type="VARCHAR"/>
+                  <parameter expression="get-property('INTERFACE_NAME')" type="VARCHAR"/>
+                  <parameter expression="get-property('JSON_RESPONSE')" type="VARCHAR"/>
+                  <parameter expression="get-property('REQ_MSISDN')" type="VARCHAR"/>
+                  <parameter value="OK" type="VARCHAR"/>
+               </statement>
+            </dbreport>
+         </sequence>
+         <!-- Response Logging ends here --><respond/>
+      </inSequence>
+      <outSequence/>
+      <faultSequence/>
+   </resource>
+</api>

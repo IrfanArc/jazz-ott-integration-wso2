@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<api xmlns="http://ws.apache.org/ns/synapse"
+     name="PostWaridEvents"
+     context="/waridEventsPost">
+   <resource methods="POST">
+      <inSequence>
+         <log level="custom">
+            <property name="TransactionId" expression="json-eval($.TransactionId)"/>
+            <property name="MSISDN" expression="json-eval($.msisdn)"/>
+         </log>
+         <property name="TransactionId" expression="json-eval($.TransactionId)"/>
+         <property name="MSISDN" expression="json-eval($.msisdn)"/>
+         <property name="ProductTypeValue" value="AddOn"/>
+         <property name="ProductCodeValue" value="VFRO"/>
+         <property name="ActionValueForInviter" value="ADD"/>
+         <payloadFactory media-type="xml" description="jms_Payload">
+            <format key="conf:repository/esb/ModifySubscriberAssetsWarid"/>
+            <args>
+               <arg evaluator="xml"
+                    expression="fn:substring(get-property('TransactionId'),10)"/>
+               <arg evaluator="xml" expression="get-property('MSISDN')"/>
+               <arg value="Postpaid"/>
+               <arg evaluator="xml" expression="get-property('ProductTypeValue')"/>
+               <arg evaluator="xml" expression="get-property('ProductCodeValue')"/>
+               <arg evaluator="xml" expression="get-property('ActionValueForInviter')"/>
+            </args>
+         </payloadFactory>
+         <enrich>
+            <source type="envelope" clone="true"/>
+            <target type="property" property="ModfifySubscriberAssetsWarid"/>
+         </enrich>
+         <log level="custom">
+            <property name="ModfifySubscriberAssetsWaridPayload"
+                      expression="get-property('ModfifySubscriberAssetsWarid')"/>
+         </log>
+         <header name="SOAPAction"
+                 scope="transport"
+                 value="/Services/MEFBusinessServices/Controller/SOAPMainListener"/>
+         <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+         <call>
+            <endpoint name="MEFBusinessServiceEP">
+               <address uri="http://10.50.173.60:3137/MEFBS/Services/MEFBusinessServices/Controller/SOAPMainListener"
+                        format="soap11">
+                  <timeout>
+                     <duration>10000</duration>
+                     <responseAction>fault</responseAction>
+                  </timeout>
+                  <suspendOnFailure>
+                     <errorCodes>-1</errorCodes>
+                     <initialDuration>0</initialDuration>
+                     <progressionFactor>1.0</progressionFactor>
+                     <maximumDuration>0</maximumDuration>
+                  </suspendOnFailure>
+                  <markForSuspension>
+                     <errorCodes>-1</errorCodes>
+                  </markForSuspension>
+               </address>
+            </endpoint>
+         </call>
+         <respond/>
+      </inSequence>
+   </resource>
+</api>

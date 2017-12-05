@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<api xmlns="http://ws.apache.org/ns/synapse"
+     name="PostpaidReleaseRefundAPI"
+     context="/PRRA">
+   <resource methods="POST" uri-template="/{msisdn}">
+      <inSequence>
+         <property name="NORMALIZED_MSISDN_FOR_IN" value="3058617278"/>
+         <property name="pkr" value="50"/>
+         <property name="Description" value="Hello Moto"/>
+         <class name="com.arcana.reservefund.ReservePostpaid"/>
+         <switch source="get-property('status')">
+            <case regex="OK">
+               <payloadFactory media-type="xml">
+                  <format>
+                     <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">
+                        <SOAP-ENV:Body>
+                           <ns0:ReserveFundsResponse xmlns:ns0="urn:vimpelcom:carrier-billing-hub:types">
+                              <ns0:CorrelationId>$1</ns0:CorrelationId>
+                              <ns0:TransactionId>$2</ns0:TransactionId>
+                              <ns0:Message>SUCCESS</ns0:Message>
+                           </ns0:ReserveFundsResponse>
+                        </SOAP-ENV:Body>
+                     </SOAP-ENV:Envelope>
+                  </format>
+                  <args>
+                     <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                     <arg evaluator="xml" expression="$ctx:TRANSACTION_ID"/>
+                  </args>
+               </payloadFactory>
+               <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+               <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+               <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+               <header name="To" action="remove"/>
+               <respond/>
+            </case>
+            <case regex="KO">
+               <property name="FORCE_ERROR_ON_SOAP_FAULT"
+                         value="true"
+                         scope="default"
+                         type="STRING"/>
+               <payloadFactory media-type="xml">
+                  <format>
+                     <ns:LogicalFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                      xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                      xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                        <ns:CorrelationId>$1</ns:CorrelationId>
+                        <ns:Cause>CHARGE_EXCEEDS_LIMIT</ns:Cause>
+                        <ns:Message>GENERAL_DECLINE.</ns:Message>
+                        <ns:UserMessage>GENERAL_DECLINE.</ns:UserMessage>
+                     </ns:LogicalFault>
+                  </format>
+                  <args>
+                     <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                  </args>
+               </payloadFactory>
+               <makefault version="soap11">
+                  <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                        value="soap11Env:Server"/>
+                  <reason value="This is an operation implementation generated fault"/>
+                  <role/>
+                  <detail xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                          expression="$body/ns:LogicalFault"/>
+               </makefault>
+               <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+               <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+               <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+               <header name="To" action="remove"/>
+               <respond/>
+            </case>
+            <case regex="timeout">
+               <property name="FORCE_ERROR_ON_SOAP_FAULT"
+                         value="true"
+                         scope="default"
+                         type="STRING"/>
+               <payloadFactory media-type="xml">
+                  <format>
+                     <ns:LogicalFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                      xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                      xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                        <ns:CorrelationId>$1</ns:CorrelationId>
+                        <ns:Cause>SYSTEM_BUSY</ns:Cause>
+                        <ns:Message> SYSTEM_BUSY.</ns:Message>
+                        <ns:UserMessage> SYSTEM_BUSY.</ns:UserMessage>
+                     </ns:LogicalFault>
+                  </format>
+                  <args>
+                     <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                  </args>
+               </payloadFactory>
+               <makefault version="soap11">
+                  <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                        value="soap11Env:Server"/>
+                  <reason value="This is an operation implementation generated fault"/>
+                  <role/>
+                  <detail xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                          expression="$body/ns:LogicalFault"/>
+               </makefault>
+               <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+               <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+               <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+               <header name="To" action="remove"/>
+               <respond/>
+            </case>
+         </switch>
+      </inSequence>
+   </resource>
+</api>

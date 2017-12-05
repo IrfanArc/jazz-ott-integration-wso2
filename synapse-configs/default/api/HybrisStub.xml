@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<api xmlns="http://ws.apache.org/ns/synapse"
+     name="HybrisStub"
+     context="/hybrisstub">
+   <resource methods="GET" uri-template="/subscribedProducts/{msisdn}">
+      <inSequence>
+         <payloadFactory media-type="xml">
+            <format>
+               <productsList>
+                  <product>
+                     <entitlements>
+                        <entitlement>
+                           <name>Allowed FnF Numbers</name>
+                           <quantity>20</quantity>
+                           <usageUnit>FnF</usageUnit>
+                        </entitlement>
+                     </entitlements>
+                     <charges>
+                        <charge>
+                           <name>Off Net Calls</name>
+                           <price>1.0</price>
+                           <usageUnit>30 seconds</usageUnit>
+                        </charge>
+                        <charge>
+                           <name>2G Data</name>
+                           <price>2.39</price>
+                           <usageUnit>MB</usageUnit>
+                        </charge>
+                        <charge>
+                           <name>On Net Calls</name>
+                           <price>1.0</price>
+                           <usageUnit>30 seconds</usageUnit>
+                        </charge>
+                        <charge>
+                           <name>International SMS</name>
+                           <price>5.98</price>
+                           <usageUnit>SMS</usageUnit>
+                        </charge>
+                        <charge>
+                           <name>On Net SMS</name>
+                           <price>1.2</price>
+                           <usageUnit>SMS</usageUnit>
+                        </charge>
+                        <charge>
+                           <name>FnF Calls</name>
+                           <price>1.0</price>
+                           <usageUnit>30 seconds</usageUnit>
+                        </charge>
+                        <charge>
+                           <name>Off Net SMS</name>
+                           <price>1.2</price>
+                           <usageUnit>SMS</usageUnit>
+                        </charge>
+                        <charge>
+                           <name>On Net VT Calls</name>
+                           <price>2.99</price>
+                           <usageUnit>30 seconds</usageUnit>
+                        </charge>
+                        <charge>
+                           <name>3G Data</name>
+                           <price>2.39</price>
+                           <usageUnit>MB</usageUnit>
+                        </charge>
+                        <charge>
+                           <name>MMS</name>
+                           <price>6.0</price>
+                           <usageUnit>50 KBs</usageUnit>
+                        </charge>
+                     </charges>
+                     <category>Voice</category>
+                     <code>PACKAGE_JAZZFIRSTAWAMI</code>
+                     <description>Terms and Conditions: All MNP &amp; new sales will get Champion's package by defaultAll voice VAS SMS and data services will be removed within 72 hours of migrationIn case a customer requests for subscription of services/ offers that are not allowed on champion package he/she will have to migrate her/his package to avail them.All Rates in PKR (Pakistani Rupee).Terms and Conditions applyCall Setup fee of Rs 0.12 (tax including) will be charged on the first pulse for each callFor Balance Inquiry Dial *111# for Rs. 0.24 (tax included). For any additional query call 111 helpline for Rs. 2.39 (tax included)14% withholding tax at recharge or bill applyService charges of 5% and operational fee of 5% applies on recharge and 19.5% FED applies on usage in Punjab Baluchistan and KPK.Service charges of 5.06% and operational fee of 5.06% applies on recharge and 18% FED applies on usage in Sindh.Service charges of 5.04% and operational fee of 5.04% applies on recharge and 18.5% FED applies on usage in rest of Pakistan1.27% higher prices will be charged in Sindh0.84% higher prices will be charged in Federal Territory FATA Baluchistan AJK and Gilgit BaltistanYour SIM is your identity; only use SIMs issued through Biometric Verification - PTA</description>
+                     <id>CHAMPION_II_(!$)_CHAMPIONII</id>
+                     <name>Champion II</name>
+                     <productType>BASE</productType>
+                     <subscribableStatus>NOT_ALLOWED_UNSUBSCRIBE</subscribableStatus>
+                     <subscriptionType>PREPAID</subscriptionType>
+                     <summary>Champion Package is Mobilink's new default (New SIM) package for all prepaid customers that offers the best rates for voice calls to all networks SMS to any local number and fastest Mobile Internet.</summary>
+                     <validityPeriod>0 No Contract</validityPeriod>
+                  </product>
+               </productsList>
+            </format>
+            <args/>
+         </payloadFactory>
+         <respond/>
+      </inSequence>
+   </resource>
+</api>

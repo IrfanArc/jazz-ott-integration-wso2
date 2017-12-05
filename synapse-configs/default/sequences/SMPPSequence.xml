@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sequence xmlns="http://ws.apache.org/ns/synapse"
+          name="SMPPSequence"
+          onError="fault">
+   <log level="custom">
+      <property name="**********In SMPP Sequence" value="************"/>
+      <property xmlns:ns="http://org.apache.synapse/xsd"
+                name="TransactionIdValue"
+                expression="get-property('TransactionId')"/>
+   </log>
+   <log level="full"/>
+   <property xmlns:ns="http://org.apache.synapse/xsd"
+             name="TransactionId"
+             expression="fn:substring-after(get-property('MessageID'),'urn:uuid:')"/>
+   <enrich>
+      <source type="envelope" clone="true"/>
+      <target type="property" property="SMPPPayload"/>
+   </enrich>
+   <property xmlns:ns="http://org.apache.synapse/xsd"
+             name="SourceAddress"
+             expression="get-property('SourceAddress')"/>
+   <log level="custom">
+      <property xmlns:ns="http://org.apache.synapse/xsd"
+                name="SMPPPayload"
+                expression="get-property('SMPPPayload')"/>
+      <property xmlns:ns0="http://ws.apache.org/commons/ns/payload"
+                xmlns:ns="http://org.apache.synapse/xsd"
+                name="SMPPPayloadText"
+                expression="$body/ns0:text"/>
+      <property xmlns:ns="http://org.apache.synapse/xsd"
+                name="MessageId"
+                expression="get-property('MessageId')"/>
+      <property xmlns:ns="http://org.apache.synapse/xsd"
+                name="SourceAddress"
+                expression="get-property('SourceAddress')"/>
+      <property xmlns:ns="http://org.apache.synapse/xsd"
+                name="DataCoding"
+                expression="get-property('DataCoding')"/>
+      <property xmlns:ns="http://org.apache.synapse/xsd"
+                name="ScheduleDeliveryTime"
+                expression="get-property('ScheduleDeliveryTime')"/>
+      <property xmlns:ns="http://org.apache.synapse/xsd"
+                name="SequenceNumber"
+                expression="get-property('SequenceNumber')"/>
+      <property xmlns:ns="http://org.apache.synapse/xsd"
+                name="ServiceType"
+                expression="get-property('ServiceType')"/>
+   </log>
+   <property xmlns:ns="http://org.apache.synapse/xsd"
+             name="SMPPPayload"
+             expression="get-property('SMPPPayload')"/>
+   <property xmlns:ns0="http://ws.apache.org/commons/ns/payload"
+             xmlns:ns="http://org.apache.synapse/xsd"
+             name="SMPPPayloadText"
+             expression="$body/ns0:text"/>
+   <property xmlns:ns="http://org.apache.synapse/xsd"
+             name="SourceAddress"
+             expression="get-property('SourceAddress')"/>
+   <payloadFactory media-type="xml">
+      <format>
+         <sms xmlns="">
+            <text>$1</text>
+            <id>$2</id>
+            <sourceAddress>$3</sourceAddress>
+         </sms>
+      </format>
+      <args>
+         <arg xmlns:ns="http://org.apache.synapse/xsd"
+              evaluator="xml"
+              expression="get-property('SMPPPayloadText')"/>
+         <arg xmlns:ns="http://org.apache.synapse/xsd"
+              evaluator="xml"
+              expression="get-property('TransactionId')"/>
+         <arg xmlns:ns="http://org.apache.synapse/xsd"
+              evaluator="xml"
+              expression="get-property('SourceAddress')"/>
+      </args>
+   </payloadFactory>
+   <property xmlns:ns0="http://ws.apache.org/commons/ns/payload"
+             xmlns:ns="http://org.apache.synapse/xsd"
+             name="SMPPPayloadText"
+             expression="$body/ns0:text"/>
+   <log level="full"/>
+   <property name="messageType" value="application/xml" scope="axis2"/>
+   <call>
+      <endpoint name="HTTPEndpoint">
+         <http method="POST"
+               uri-template="http://10.50.13.134:8282/googleott/conveyrequest"/>
+      </endpoint>
+   </call>
+   <log level="custom">
+      <property name="**********Response" value="************"/>
+   </log>
+   <log level="full"/>
+   <drop/>
+</sequence>

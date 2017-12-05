@@ -1,0 +1,2899 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<proxy xmlns="http://ws.apache.org/ns/synapse"
+       name="GDBAbdulRab"
+       transports="http https"
+       startOnLoad="true">
+   <description/>
+   <target>
+      <inSequence>
+         <switch xmlns:urn="urn:vimpelcom:carrier-billing-hub:types"
+                 xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                 source="local-name(soapenv:Body/*[1])">
+            <case regex="ChargeSubscriberMessage">
+               <log level="custom">
+                  <property name="operation" value="ChargeSubscriberMessage"/>
+               </log>
+               <log level="full" description="chargerSubscriber"/>
+               <property xmlns:p="urn:vimpelcom:carrier-billing-hub:types"
+                         name="CorrelationID"
+                         expression="$body//p:ChargeSubscriberMessage/p:CorrelationId"
+                         scope="default"
+                         type="STRING"/>
+               <property name="NewCorrelationID"
+                         expression="$ctx:CorrelationID"
+                         type="STRING"/>
+               <property xmlns:p="urn:vimpelcom:carrier-billing-hub:types"
+                         name="PartnerId"
+                         expression="$body//p:ChargeSubscriberMessage/p:PartnerId"
+                         scope="default"
+                         type="STRING"/>
+               <log level="custom">
+                  <property name="operation" value="Before filter"/>
+               </log>
+               <filter xpath="$ctx:PartnerId ='google'">
+                  <then>
+                     <log level="custom">
+                        <property name="operation" value="Infilter"/>
+                     </log>
+                     <filter xpath="$ctx:CorrelationID != ''">
+                        <then>
+                           <log level="custom">
+                              <property name="operation" value="InFilter"/>
+                           </log>
+                           <class name="com.arcana.charge.cs"/>
+                           <filter xpath="get-property('status')='OK'">
+                              <then>
+                                 <filter xpath="get-property('CAUSE')='INVALID_DATA'">
+                                    <then>
+                                       <payloadFactory media-type="xml">
+                                          <format>
+                                             <ns:MisbehaviorFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                                  xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                                                  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                                                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                                                <ns:CorrelationId>$1</ns:CorrelationId>
+                                                <ns:Cause>INVALID_DATA</ns:Cause>
+                                                <ns:Message>INVALID_DATA</ns:Message>
+                                                <ns:UserMessage>CorrelationID is Invalid</ns:UserMessage>
+                                             </ns:MisbehaviorFault>
+                                          </format>
+                                          <args>
+                                             <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                                          </args>
+                                       </payloadFactory>
+                                       <makefault version="soap11">
+                                          <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                                                value="soap11Env:Server"/>
+                                          <reason value="This is an operation implementation generated fault"/>
+                                          <role/>
+                                          <detail xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                  expression="$body/ns:MisbehaviorFault"/>
+                                       </makefault>
+                                       <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                                       <property name="HTTP_SC" value="500" scope="axis2"/>
+                                       <property name="RESPONSE" value="true"/>
+                                       <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                                       <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                                       <header name="To" scope="default" action="remove"/>
+                                       <respond/>
+                                    </then>
+                                 </filter>
+                              </then>
+                           </filter>
+                           <dbreport>
+                              <connection>
+                                 <pool>
+                                    <dsName>jdbc/ott</dsName>
+                                 </pool>
+                              </connection>
+                              <statement>
+                                 <sql>INSERT into HUB_TRANSACTION_STORE (CORRELATION_ID,STATUS,INTERFACE_NAME,CAUSE) VALUES (?,?,?,?)</sql>
+                                 <parameter expression="$ctx:CorrelationID" type="VARCHAR"/>
+                                 <parameter value="OK" type="VARCHAR"/>
+                                 <parameter value="ChargeSubscriber" type="VARCHAR"/>
+                                 <parameter value="" type="VARCHAR"/>
+                              </statement>
+                           </dbreport>
+                           <log level="full"/>
+                           <clone id="clone1">
+                              <target sequence="ChargeSubscriberFirstRes"/>
+                              <target sequence="ChargeSubscriberSecondRes"/>
+                           </clone>
+                        </then>
+                        <else>
+                           <payloadFactory media-type="xml">
+                              <format>
+                                 <ns:MisbehaviorFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                      xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                                      xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                                    <ns:CorrelationId>$1</ns:CorrelationId>
+                                    <ns:Cause>INVALID_DATA</ns:Cause>
+                                    <ns:Message>INVALID_DATA</ns:Message>
+                                    <ns:UserMessage>PartnerID is Invalid</ns:UserMessage>
+                                 </ns:MisbehaviorFault>
+                              </format>
+                              <args>
+                                 <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                              </args>
+                           </payloadFactory>
+                           <makefault version="soap11">
+                              <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                                    value="soap11Env:Server"/>
+                              <reason value="This is an operation implementation generated fault"/>
+                              <role/>
+                              <detail xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                      expression="$body/ns:MisbehaviorFault"/>
+                           </makefault>
+                           <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                           <property name="HTTP_SC" value="500" scope="axis2"/>
+                           <property name="RESPONSE" value="true"/>
+                           <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                           <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                           <header name="To" scope="default" action="remove"/>
+                           <respond/>
+                        </else>
+                     </filter>
+                  </then>
+                  <else>
+                     <log level="full"/>
+                     <dbreport>
+                        <connection>
+                           <pool>
+                              <dsName>jdbc/ott</dsName>
+                           </pool>
+                        </connection>
+                        <statement>
+                           <sql>INSERT into HUB_TRANSACTION_STORE (CORRELATION_ID,STATUS,INTERFACE_NAME,CAUSE) VALUES (?,?,?,?)</sql>
+                           <parameter expression="$ctx:CorrelationID" type="VARCHAR"/>
+                           <parameter value="KO" type="VARCHAR"/>
+                           <parameter value="ChargeSubscriber" type="VARCHAR"/>
+                           <parameter value="INVALID_DATA" type="VARCHAR"/>
+                        </statement>
+                     </dbreport>
+                     <payloadFactory media-type="xml">
+                        <format>
+                           <ns:MisbehaviorFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                                xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                              <ns:CorrelationId>$1</ns:CorrelationId>
+                              <ns:Cause>INVALID_DATA</ns:Cause>
+                              <ns:Message>INVALID_DATA</ns:Message>
+                              <ns:UserMessage>INVALID_DATA</ns:UserMessage>
+                           </ns:MisbehaviorFault>
+                        </format>
+                        <args>
+                           <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                        </args>
+                     </payloadFactory>
+                     <makefault version="soap11">
+                        <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                              value="soap11Env:Server"/>
+                        <reason value="This is an operation implementation generated fault"/>
+                        <role/>
+                        <detail xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                expression="$body/ns:MisbehaviorFault"/>
+                     </makefault>
+                     <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                     <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                     <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                     <header name="To" scope="default" action="remove"/>
+                     <respond/>
+                  </else>
+               </filter>
+            </case>
+            <case regex="CheckMsisdnRequest">
+               <log level="custom">
+                  <property name="operation" value="CheckMsisdnRequest"/>
+               </log>
+            </case>
+            <case regex="GetSubscriberInfoRequest">
+               <log level="full" description="full"/>
+               <property xmlns:p="urn:vimpelcom:carrier-billing-hub:types"
+                         name="RequestedSubscriberAttributes"
+                         expression="$body//p:GetSubscriberInfoRequest"
+                         scope="default"
+                         type="STRING"
+                         description="RequestedSubscriberAttributes"/>
+               <log level="full" description="log"/>
+               <property xmlns:p="urn:vimpelcom:carrier-billing-hub:types"
+                         name="CorrelationId"
+                         expression="$body//p:GetSubscriberInfoRequest/p:CorrelationId"
+                         scope="default"
+                         type="STRING"
+                         description="CorrelationId"/>
+               <property xmlns:p="urn:vimpelcom:carrier-billing-hub:types"
+                         name="PartnerId"
+                         expression="$body//p:GetSubscriberInfoRequest/p:PartnerId"
+                         scope="default"
+                         type="STRING"
+                         description="PartnerId"/>
+               <property xmlns:p="urn:vimpelcom:carrier-billing-hub:types"
+                         name="IMSI"
+                         expression="$body//p:GetSubscriberInfoRequest/p:IMSI"
+                         scope="default"
+                         type="STRING"
+                         description="IMSI"/>
+               <class name="Subscriber.RequestedAttribuesGroup"/>
+               <property xmlns:p="urn:vimpelcom:carrier-billing-hub:types"
+                         name="UserLocale"
+                         expression="$body//p:GetSubscriberInfoRequest/p:UserLocale"
+                         scope="default"
+                         type="STRING"
+                         description="UserLocale"/>
+               <log level="custom" description="">
+                  <property name="property_nameNOTValidDataAttributes"
+                            expression="get-property('IsNOTValidDataAttributes')"/>
+               </log>
+               <filter xpath="$ctx:IsNOTValidDataAttributes != 'false'">
+                  <then>
+                     <log level="custom" description="">
+                        <property name="property_coid" expression="get-property('CorrelationId')"/>
+                        <property name="property_partid" expression="get-property('PartnerId')"/>
+                        <property name="property_IMSI" expression="get-property('IMSI')"/>
+                        <property name="property_RequestedSubscriberAttributes"
+                                  expression="get-property('RequestedSubscriberAttributes')"/>
+                        <property name="property_UserLocale" expression="get-property('UserLocale')"/>
+                     </log>
+                     <log level="custom" description="">
+                        <property name="property_MSSIDN***before generatedid**********************************************"
+                                  expression="get-property('COMPTEL_IMSI')"/>
+                     </log>
+                     <call>
+                        <endpoint>
+                           <http method="GET" uri-template="http://10.50.13.134:8282/generateId"/>
+                        </endpoint>
+                     </call>
+                     <property name="TransactionId"
+                               expression="$body//transaction"
+                               scope="default"
+                               type="STRING"/>
+                     <log level="full" description="full"/>
+                     <log level="custom" description="">
+                        <property name="property_MSSIDN***After TransactionId**********************************************"
+                                  expression="get-property('TransactionId')"/>
+                     </log>
+                     <dbreport>
+                        <connection>
+                           <pool>
+                              <dsName>jdbc/ott</dsName>
+                           </pool>
+                        </connection>
+                        <statement>
+                           <sql>INSERT INTO OTTHub_Wso2.HUB_TRANSACTION_STORE (CORRELATION_ID, TRANSACTION_ID, INTERFACE_NAME, STATUS, TIMEIN) VALUES (?,?,'GetSubscriberInfo','OK',NOW())
+					</sql>
+                           <parameter expression="get-property('CorrelationId')" type="VARCHAR"/>
+                           <parameter expression="get-property('TransactionId')" type="VARCHAR"/>
+                        </statement>
+                     </dbreport>
+                     <payloadFactory media-type="xml" description="">
+                        <format>
+                           <soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope"
+                                          xmlns:ins="http://soa.comptel.com/2011/02/instantlink">
+                              <soap:Header/>
+                              <soap:Body>
+                                 <ins:DisplayRequest>
+                                    <ins:RequestHeader>
+                                       <ins:NeType>BST</ins:NeType>
+                                       <ins:OrderNo>$2</ins:OrderNo>
+                                       <ins:Priority>5</ins:Priority>
+                                       <ins:ReqUser>bss</ins:ReqUser>
+                                       <ins:RetransmissionFlag>false</ins:RetransmissionFlag>
+                                       <ins:BypassLock>false</ins:BypassLock>
+                                    </ins:RequestHeader>
+                                    <ins:RequestParameters>
+                                       <ins:Parameter name="IMSI" value="$1"/>
+                                       <ins:Parameter name="NE_TYPE" value="BST"/>
+                                       <ins:Parameter name="REQ_OBJ" value="1"/>
+                                       <ins:Parameter name="REQ_TYPE" value="4"/>
+                                    </ins:RequestParameters>
+                                 </ins:DisplayRequest>
+                              </soap:Body>
+                           </soap:Envelope>
+                        </format>
+                        <args>
+                           <arg evaluator="xml" expression="get-property('IMSI')"/>
+                           <arg evaluator="xml" expression="get-property('CorrelationId')"/>
+                        </args>
+                     </payloadFactory>
+                     <log level="custom">
+                        <property name="property_name" value="before Comptel"/>
+                     </log>
+                     <log level="full"/>
+                     <call>
+                        <endpoint name="ComptelEP">
+                           <address uri="http://10.50.14.234:44006/ilws/InstantLinkSOA" format="soap12">
+                              <timeout>
+                                 <duration>10000</duration>
+                                 <responseAction>fault</responseAction>
+                              </timeout>
+                              <suspendOnFailure>
+                                 <errorCodes>-1</errorCodes>
+                                 <initialDuration>0</initialDuration>
+                                 <progressionFactor>1.0</progressionFactor>
+                                 <maximumDuration>0</maximumDuration>
+                              </suspendOnFailure>
+                              <markForSuspension>
+                                 <errorCodes>-1</errorCodes>
+                              </markForSuspension>
+                           </address>
+                        </endpoint>
+                     </call>
+                     <log level="full"/>
+                     <property xmlns:ns="http://soa.comptel.com/2011/02/instantlink"
+                               name="COMPTEL_IMSI"
+                               expression="//ns:Response/ns:ResponseParameters/ns:Parameter[@name='TS21_MSISDN1']/@value"
+                               scope="default"
+                               type="STRING"/>
+                     <property name="NORMALIZED_MSISDN_FOR_IN"
+                               expression="fn:concat('',fn:substring(get-property('COMPTEL_IMSI'),3))"
+                               scope="default"
+                               type="STRING"/>
+                     <property xmlns:S="http://www.w3.org/2003/05/soap-envelope"
+                               xmlns:env="http://www.w3.org/2003/05/soap-envelope"
+                               name="statuscode"
+                               expression="$body//Response/ResponseHeader/Status"
+                               scope="default"
+                               type="STRING"/>
+                     <log level="custom">
+                        <property name="property_statuscode" expression="$ctx:statuscode"/>
+                     </log>
+                     <dblookup>
+                        <connection>
+                           <pool>
+                              <dsName>jdbc/ott</dsName>
+                           </pool>
+                        </connection>
+                        <statement>
+                           <sql>SELECT `VALUE` FROM `HUB_CONFIGURATIONS` WHERE  `NAME`='SUBSCRIBER_TRANSACTION_LIMIT' and INTERFACE_NAME='GetSubscriberInfo' and SERVICE_ID='google.*'</sql>
+                           <result name="Post_TransactionID" column="1"/>
+                        </statement>
+                     </dblookup>
+                     <log level="custom">
+                        <property name="property_requestedAttributes"
+                                  expression="get-property('RequestedSubscriberAttributes')"/>
+                     </log>
+                     <log level="custom" description="">
+                        <property name="property_MSSIDN" expression="get-property('COMPTEL_IMSI')"/>
+                     </log>
+                     <log level="custom" description="">
+                        <property name="property_MSSIDN**********************************************"
+                                  expression="get-property('COMPTEL_IMSI')"/>
+                     </log>
+                     <filter xpath="string-length($ctx:COMPTEL_IMSI) !=0 ">
+                        <then>
+                           <log level="custom" description="ISPOSTPREPAID">
+                              <property name="property_nameISPOSTPAID"
+                                        expression="get-property('RequestedAttPrePostpaid')"/>
+                           </log>
+                           <filter xpath="get-property('RequestedAttPrePostpaid')='Prepaid'"
+                                   description="validating filter">
+                              <then>
+                                 <log level="custom" description="Prepaid">
+                                    <property name="property_Prepaid" value="In Prepaid process"/>
+                                 </log>
+                                 <filter xpath="$ctx:COMPTEL_IMSI !='' or $ctx:COMPTEL_IMSI !=0">
+                                    <then>
+                                       <log level="custom" description="MSSIDN ">
+                                          <property name="property_name" value="property_true_IN"/>
+                                       </log>
+                                       <property name="NORMALIZED_MSISDN_FOR_IN"
+                                                 expression="fn:concat('',fn:substring(get-property('COMPTEL_IMSI'),3))"
+                                                 scope="default"
+                                                 type="STRING"/>
+                                       <payloadFactory media-type="xml">
+                                          <format>
+                                             <methodCall xmlns="">
+                                                <methodName>GetBalanceAndDate</methodName>
+                                                <params>
+                                                   <param>
+                                                      <value>
+                                                         <struct>
+                                                            <member>
+                                                               <name>originTransactionID</name>
+                                                               <value>
+                                                                  <string>123123</string>
+                                                               </value>
+                                                            </member>
+                                                            <member>
+                                                               <name>originNodeType</name>
+                                                               <value>
+                                                                  <string>EXT</string>
+                                                               </value>
+                                                            </member>
+                                                            <member>
+                                                               <name>originHostName</name>
+                                                               <value>
+                                                                  <string>1</string>
+                                                               </value>
+                                                            </member>
+                                                            <member>
+                                                               <name>originTimeStamp</name>
+                                                               <value>
+                                                                  <dateTime.iso8601>20060113T22:28:54+0000</dateTime.iso8601>
+                                                               </value>
+                                                            </member>
+                                                            <member>
+                                                               <name>subscriberNumber</name>
+                                                               <value>
+                                                                  <string>$1</string>
+                                                               </value>
+                                                            </member>
+                                                         </struct>
+                                                      </value>
+                                                   </param>
+                                                </params>
+                                             </methodCall>
+                                          </format>
+                                          <args>
+                                             <arg evaluator="xml" expression="$ctx:NORMALIZED_MSISDN_FOR_IN"/>
+                                          </args>
+                                       </payloadFactory>
+                                       <header name="User-Agent" scope="transport" value="UGw Server/4.3/1.0"/>
+                                       <header name="Authorization"
+                                               scope="transport"
+                                               value="Basic SU5UQUNBR0Q6UGF0Y2gjMTIz"/>
+                                       <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                                       <property name="DISABLE_CHUNKING"
+                                                 value="true"
+                                                 scope="axis2"
+                                                 type="STRING"/>
+                                       <call>
+                                          <endpoint name="IN_EP">
+                                             <http format="rest"
+                                                   method="POST"
+                                                   uri-template="http://10.13.32.156:10010/Air">
+                                                <timeout>
+                                                   <duration>10000</duration>
+                                                   <responseAction>fault</responseAction>
+                                                </timeout>
+                                                <suspendOnFailure>
+                                                   <errorCodes>-1</errorCodes>
+                                                   <initialDuration>0</initialDuration>
+                                                   <progressionFactor>1.0</progressionFactor>
+                                                   <maximumDuration>0</maximumDuration>
+                                                </suspendOnFailure>
+                                                <markForSuspension>
+                                                   <errorCodes>-1</errorCodes>
+                                                </markForSuspension>
+                                             </http>
+                                          </endpoint>
+                                       </call>
+                                       <log level="full"/>
+                                       <log level="custom">
+                                          <property name="AIN 1st"
+                                                    value="************************************************************************"/>
+                                       </log>
+                                       <property name="ResponseCode"
+                                                 expression="$body//methodResponse/params/param/value/struct/member[name='responseCode']/value/i4"
+                                                 scope="default"
+                                                 type="STRING"
+                                                 description="responseCode"/>
+                                       <property name="accountValue1"
+                                                 expression="$body//methodResponse/params/param/value/struct/member[name='accountValue1']/value/string"
+                                                 scope="default"
+                                                 type="STRING"
+                                                 description="accountValue1"/>
+                                       <property name="currencypr"
+                                                 expression="$body//methodResponse/params/param/value/struct/member[name='currency1']/value/string"
+                                                 scope="default"
+                                                 type="STRING"
+                                                 description="currencypr"/>
+                                       <property name="statuscode"
+                                                 expression="$trp:statuscode"
+                                                 scope="default"
+                                                 type="STRING"
+                                                 description="statusCode"/>
+                                       <property name="originTransactionIDpr"
+                                                 expression="$body//methodResponse/params/param/value/struct/member[name='originTransactionID']/value/string"
+                                                 scope="default"
+                                                 type="STRING"
+                                                 description="originTransactionIDpr"/>
+                                       <log level="custom" description="">
+                                          <property name="property_accouontvalue1" expression="$ctx:accountValue1"/>
+                                       </log>
+                                       <log level="custom" description="">
+                                          <property name="property_nameResponse" expression="get-property('ResponseCode')"/>
+                                       </log>
+                                       <filter xpath="$ctx:ResponseCode=0 or $ctx:ResponseCode=200">
+                                          <then>
+                                             <log level="custom" description="">
+                                                <property name="property_nameOffer6054"
+                                                          expression="get-property('CurrentPrepaidValue')"/>
+                                             </log>
+                                             <log level="custom">
+                                                <property name="property_service SW" value="property_Services"/>
+                                             </log>
+                                             <log level="custom" description="OffId">
+                                                <property name="property_nameRespomseCode"
+                                                          expression="get-property('ResponseCode')"/>
+                                             </log>
+                                             <filter xpath="$body//methodResponse/params/param/value/struct/member[name='offerInformationList']/value/array/data/value/struct/member[name='offerID']/value/i4='1380'"
+                                                     description="">
+                                                <then>
+                                                   <log/>
+                                                   <property name="OfferID"
+                                                             value="1380"
+                                                             scope="default"
+                                                             type="STRING"
+                                                             description="OfferID"/>
+                                                   <property name="accountType"
+                                                             value=""
+                                                             scope="default"
+                                                             type="STRING"
+                                                             description="postpaid"/>
+                                                   <dbreport description="">
+                                                      <connection>
+                                                         <pool>
+                                                            <dsName>jdbc/ott</dsName>
+                                                         </pool>
+                                                      </connection>
+                                                      <statement>
+                                                         <sql>Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET  TRANSACTION_ID = ? , STATUS = 'KO' , CAUSE = 'NOT_ELIGIBLE' ,`DESCRIPTION`='Subscriber is no eligible' WHERE CORRELATION_ID= ? and INTERFACE_NAME= 'GetSubscriberInfo'</sql>
+                                                         <parameter expression="$ctx:TransactionId" type="CHAR"/>
+                                                         <parameter expression="$ctx:CorrelationId" type="CHAR"/>
+                                                      </statement>
+                                                   </dbreport>
+                                                </then>
+                                                <else>
+                                                   <log level="custom">
+                                                      <property name="property_PartnerId" expression="get-property('PartnerId')"/>
+                                                   </log>
+                                                   <dblookup>
+                                                      <connection>
+                                                         <pool>
+                                                            <dsName>jdbc/ott</dsName>
+                                                         </pool>
+                                                      </connection>
+                                                      <statement>
+                                                         <sql>SELECT PARTNERSERVICE FROM `HUB_PARTNER_SERVICE_MAP` where ACCOUNTTYPE =? and PARTNERID='google' GROUP BY PARTNERSERVICE</sql>
+                                                         <parameter expression="get-property('RequestedSubscriberAttributes')"
+                                                                    type="VARCHAR"/>
+                                                         <result name="servicesList" column="1"/>
+                                                      </statement>
+                                                   </dblookup>
+                                                   <property name="OfferID"
+                                                             value=""
+                                                             scope="default"
+                                                             type="STRING"
+                                                             description="OfferID"/>
+                                                   <filter xpath="$body//methodResponse/params/param/value/struct/member[name='offerInformationList']/value/array/data/value/struct/member[name='offerID']/value/i4='7000' and $body//methodResponse/params/param/value/struct/member[name='offerInformationList']/value/array/data/value/struct/member[name='offerID']/value/i4='9104'">
+                                                      <then>
+                                                         <property name="accountType"
+                                                                   value="postpaid"
+                                                                   scope="default"
+                                                                   type="STRING"
+                                                                   description="postpaid"/>
+                                                      </then>
+                                                      <else>
+                                                         <filter xpath="$body//methodResponse/params/param/value/struct/member[name='offerInformationList']/value/array/data/value/struct/member[name='offerID']/value/i4='7000'">
+                                                            <then>
+                                                               <property name="accountType"
+                                                                         value="enterprise"
+                                                                         scope="default"
+                                                                         type="STRING"
+                                                                         description="Enterprise"/>
+                                                            </then>
+                                                            <else>
+                                                               <property name="accountType"
+                                                                         value="prepaid"
+                                                                         scope="default"
+                                                                         type="STRING"
+                                                                         description="Prepaid"/>
+                                                            </else>
+                                                         </filter>
+                                                      </else>
+                                                   </filter>
+                                                </else>
+                                             </filter>
+                                          </then>
+                                          <else>
+                                             <log/>
+                                             <filter xpath=" $ctx:ResponseCode=102">
+                                                <then>
+                                                   <log level="full"/>
+                                                   <log level="custom" description="102Code">
+                                                      <property name="property_name102" expression=" $ctx:ResponseCode"/>
+                                                   </log>
+                                                   <property name="FORCE_ERROR_ON_SOAP_FAULT"
+                                                             value="true"
+                                                             scope="default"
+                                                             type="STRING"/>
+                                                   <dbreport description="">
+                                                      <connection>
+                                                         <pool>
+                                                            <dsName>jdbc/ott</dsName>
+                                                         </pool>
+                                                      </connection>
+                                                      <statement>
+                                                         <sql>Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET  TRANSACTION_ID = ? , STATUS = 'KO' , CAUSE = 'SUBSCRIBER_NOT_FOUND' ,`DESCRIPTION`='Subscriber cannot be found using IMSI provided' WHERE CORRELATION_ID= ? and INTERFACE_NAME= 'GetSubscriberInfo'</sql>
+                                                         <parameter expression="$ctx:TransactionId" type="CHAR"/>
+                                                         <parameter expression="$ctx:CorrelationId" type="CHAR"/>
+                                                      </statement>
+                                                   </dbreport>
+                                                   <payloadFactory media-type="xml">
+                                                      <format>
+                                                         <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">
+                                                            <SOAP-ENV:Body>
+                                                               <SOAP-ENV:Fault>
+                                                                  <faultcode xmlns="">SOAP-ENV:Server</faultcode>
+                                                                  <faultstring xmlns="">This is an operation implementation generated fault</faultstring>
+                                                                  <faultactor xmlns=""/>
+                                                                  <detail xmlns="">
+                                                                     <ns:LogicalFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                                                      xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                                                                      xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                                                                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                                                                        <ns:CorrelationId>$1</ns:CorrelationId>
+                                                                        <ns:Cause>SUBSCRIBER_NOT_FOUND</ns:Cause>
+                                                                        <ns:Message>Subscriber cannot be found using IMSI provided.</ns:Message>
+                                                                        <ns:UserMessage>Subscriber cannot be found using IMSI provided.</ns:UserMessage>
+                                                                     </ns:LogicalFault>
+                                                                  </detail>
+                                                               </SOAP-ENV:Fault>
+                                                            </SOAP-ENV:Body>
+                                                         </SOAP-ENV:Envelope>
+                                                      </format>
+                                                      <args>
+                                                         <arg evaluator="xml" expression="get-property('CorrelationId')"/>
+                                                      </args>
+                                                   </payloadFactory>
+                                                   <makefault version="soap11">
+                                                      <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                                                            value="soap11Env:Server"/>
+                                                      <reason value="This is an operation implementation generated fault"/>
+                                                      <role/>
+                                                      <detail xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                              expression="$body//ns:LogicalFault"/>
+                                                   </makefault>
+                                                   <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                                                   <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                                                   <property name="HTTP_SC" value="500" scope="axis2" type="STRING"/>
+                                                   <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                                                   <header name="To" scope="default" action="remove"/>
+                                                   <respond/>
+                                                </then>
+                                                <else>
+                                                   <property name="FORCE_ERROR_ON_SOAP_FAULT"
+                                                             value="true"
+                                                             scope="default"
+                                                             type="STRING"/>
+                                                   <payloadFactory media-type="xml">
+                                                      <format>
+                                                         <ns:SystemFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                                         xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                                                         xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                                                         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                                                            <ns:CorrelationId>$1</ns:CorrelationId>
+                                                            <ns:Cause>GENERAL_DECLINE</ns:Cause>
+                                                            <ns:Message>Transaction is declined by internal systems due to reasons, which could not be described by other Causes.</ns:Message>
+                                                            <ns:UserMessage>Transaction is declined by internal systems due to reasons, which could not be described by other Causes.</ns:UserMessage>
+                                                         </ns:SystemFault>
+                                                      </format>
+                                                      <args>
+                                                         <arg evaluator="xml" expression="get-property('CorrelationId')"/>
+                                                      </args>
+                                                   </payloadFactory>
+                                                   <makefault version="soap11">
+                                                      <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                                                            value="soap11Env:Server"/>
+                                                      <reason value="This is an operation implementation generated fault"/>
+                                                      <role/>
+                                                      <detail xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                              expression="$body//ns:SystemFault"/>
+                                                   </makefault>
+                                                   <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                                                   <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                                                   <property name="HTTP_SC" value="500" scope="axis2" type="STRING"/>
+                                                   <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                                                   <header name="To" scope="default" action="remove"/>
+                                                   <respond/>
+                                                </else>
+                                             </filter>
+                                          </else>
+                                       </filter>
+                                       <log level="full"/>
+                                    </then>
+                                    <else>
+                                       <log level="custom">
+                                          <property name="Error" value="Error Switch"/>
+                                       </log>
+                                       <log level="full"/>
+                                       <dbreport description="">
+                                          <connection>
+                                             <pool>
+                                                <dsName>jdbc/ott</dsName>
+                                             </pool>
+                                          </connection>
+                                          <statement>
+                                             <sql>Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET  TRANSACTION_ID = ? , STATUS = 'KO' , CAUSE = 'SUBSCRIBER_NOT_FOUND' ,`DESCRIPTION`='Subscriber cannot be found using IMSI provided' WHERE CORRELATION_ID= ? and INTERFACE_NAME= 'GetSubscriberInfo'</sql>
+                                             <parameter expression="$ctx:TransactionId" type="CHAR"/>
+                                             <parameter expression="$ctx:CorrelationId" type="CHAR"/>
+                                          </statement>
+                                       </dbreport>
+                                       <payloadFactory media-type="xml">
+                                          <format>
+                                             <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">
+                                                <SOAP-ENV:Body>
+                                                   <SOAP-ENV:Fault>
+                                                      <faultcode xmlns="">SOAP-ENV:Server</faultcode>
+                                                      <faultstring xmlns="">This is an operation implementation generated fault</faultstring>
+                                                      <faultactor xmlns=""/>
+                                                      <detail xmlns="">
+                                                         <ns:LogicalFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                                          xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                                                          xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                                                          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                                                            <ns:CorrelationId>$1</ns:CorrelationId>
+                                                            <ns:Cause>SUBSCRIBER_NOT_FOUND</ns:Cause>
+                                                            <ns:Message>Subscriber cannot be found using IMSI provided.</ns:Message>
+                                                            <ns:UserMessage>Subscriber cannot be found using IMSI provided.</ns:UserMessage>
+                                                         </ns:LogicalFault>
+                                                      </detail>
+                                                   </SOAP-ENV:Fault>
+                                                </SOAP-ENV:Body>
+                                             </SOAP-ENV:Envelope>
+                                          </format>
+                                          <args>
+                                             <arg evaluator="xml" expression="get-property('CorrelationId')"/>
+                                          </args>
+                                       </payloadFactory>
+                                       <makefault version="soap11">
+                                          <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                                                value="soap11Env:Server"/>
+                                          <reason value="This is an operation implementation generated fault"/>
+                                          <role/>
+                                          <detail xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                  expression="$body//ns:LogicalFault"/>
+                                       </makefault>
+                                       <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                                       <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                                       <property name="HTTP_SC" value="500" scope="axis2" type="STRING"/>
+                                       <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                                       <header name="To" scope="default" action="remove"/>
+                                       <respond/>
+                                    </else>
+                                 </filter>
+                                 <log level="custom">
+                                    <property name="Before Calling claasss mediator" value="*************"/>
+                                 </log>
+                                 <log level="custom" description="">
+                                    <property name="property_accountType before call class***************"
+                                              expression="$ctx:accountType"/>
+                                 </log>
+                                 <property name="Attributes"
+                                           expression="$ctx:RequestedSubscriberAttributes"
+                                           scope="default"
+                                           type="STRING"
+                                           description="Attributes"/>
+                                 <class name="Subscriber.PrePaidResponse"/>
+                                 <property name="preresponse"
+                                           expression="$ctx:ReposneBodyPrepaid"
+                                           scope="default"
+                                           type="STRING"/>
+                                 <log level="custom" description="">
+                                    <property name="property_ResponseCodepre***************"
+                                              expression="$ctx:ReposneBodyPrepaid"/>
+                                 </log>
+                                 <payloadFactory media-type="xml">
+                                    <format>
+                                       <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">
+                                          <SOAP-ENV:Body>
+                                             <ns0:GetSubscriberInfoResponse xmlns:ns0="urn:vimpelcom:carrier-billing-hub:types">
+                                                <ns0:CorrelationId>$1</ns0:CorrelationId>
+                                                <ns0:TransactionId>$2</ns0:TransactionId>
+                                                <ns0:Message>SUCCESS</ns0:Message>$3</ns0:GetSubscriberInfoResponse>
+                                          </SOAP-ENV:Body>
+                                       </SOAP-ENV:Envelope>
+                                    </format>
+                                    <args>
+                                       <arg evaluator="xml" expression="get-property('CorrelationId')"/>
+                                       <arg evaluator="xml" expression="get-property('TransactionId')"/>
+                                       <arg evaluator="xml" expression="get-property('preresponse')"/>
+                                    </args>
+                                 </payloadFactory>
+                                 <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                                 <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                                 <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                                 <header name="To" scope="default" action="remove"/>
+                                 <log level="custom">
+                                    <property name="property_beforesend Prepost" value="Prepost response sender"/>
+                                 </log>
+                                 <respond/>
+                              </then>
+                              <else>
+                                 <log level="custom" description="PostPaid">
+                                    <property name="property_nameOthersAttributes"
+                                              value="property_Other_Attributes_values"/>
+                                 </log>
+                                 <header name="User-Agent" scope="transport" value="UGw Server/4.3/1.0"/>
+                                 <header name="Authorization"
+                                         scope="transport"
+                                         value="Basic SU5UQUNBR0Q6UGF0Y2gjMTIz"/>
+                                 <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                                 <property name="DISABLE_CHUNKING"
+                                           value="true"
+                                           scope="axis2"
+                                           type="STRING"/>
+                                 <payloadFactory media-type="xml">
+                                    <format>
+                                       <methodCall xmlns="">
+                                          <methodName>GetBalanceAndDate</methodName>
+                                          <params>
+                                             <param>
+                                                <value>
+                                                   <struct>
+                                                      <member>
+                                                         <name>originTransactionID</name>
+                                                         <value>
+                                                            <string>123123</string>
+                                                         </value>
+                                                      </member>
+                                                      <member>
+                                                         <name>originNodeType</name>
+                                                         <value>
+                                                            <string>EXT</string>
+                                                         </value>
+                                                      </member>
+                                                      <member>
+                                                         <name>originHostName</name>
+                                                         <value>
+                                                            <string>1</string>
+                                                         </value>
+                                                      </member>
+                                                      <member>
+                                                         <name>originTimeStamp</name>
+                                                         <value>
+                                                            <dateTime.iso8601>20060113T22:28:54+0000</dateTime.iso8601>
+                                                         </value>
+                                                      </member>
+                                                      <member>
+                                                         <name>subscriberNumber</name>
+                                                         <value>
+                                                            <string>$1</string>
+                                                         </value>
+                                                      </member>
+                                                   </struct>
+                                                </value>
+                                             </param>
+                                          </params>
+                                       </methodCall>
+                                    </format>
+                                    <args>
+                                       <arg evaluator="xml" expression="$ctx:NORMALIZED_MSISDN_FOR_IN"/>
+                                       <arg evaluator="xml" expression="$ctx:TRANSACTION_ID"/>
+                                    </args>
+                                 </payloadFactory>
+                                 <header name="User-Agent" scope="transport" value="UGw Server/4.3/1.0"/>
+                                 <header name="Authorization"
+                                         scope="transport"
+                                         value="Basic SU5UQUNBR0Q6UGF0Y2gjMTIz"/>
+                                 <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                                 <property name="DISABLE_CHUNKING"
+                                           value="true"
+                                           scope="axis2"
+                                           type="STRING"/>
+                                 <call>
+                                    <endpoint name="IN_EP">
+                                       <http format="rest"
+                                             method="POST"
+                                             uri-template="http://10.13.32.156:10010/Air">
+                                          <timeout>
+                                             <duration>10000</duration>
+                                             <responseAction>fault</responseAction>
+                                          </timeout>
+                                          <suspendOnFailure>
+                                             <errorCodes>-1</errorCodes>
+                                             <initialDuration>0</initialDuration>
+                                             <progressionFactor>1.0</progressionFactor>
+                                             <maximumDuration>0</maximumDuration>
+                                          </suspendOnFailure>
+                                          <markForSuspension>
+                                             <errorCodes>-1</errorCodes>
+                                          </markForSuspension>
+                                       </http>
+                                    </endpoint>
+                                 </call>
+                                 <log level="full"/>
+                                 <log level="custom">
+                                    <property name="AIN 1st"
+                                              value="************************************************************************"/>
+                                 </log>
+                                 <class name="Subscriber.SubscriberInfo"/>
+                                 <class name="Subscriber.PostPaidResposnse"/>
+                                 <property name="TotalBill"
+                                           expression="get-property('TOTAL_BILL')"
+                                           scope="default"
+                                           type="STRING"
+                                           description="TotalBill"/>
+                                 <property name="Due_DT"
+                                           expression="get-property('Due_DT')"
+                                           scope="default"
+                                           type="STRING"
+                                           description="Due_DT"/>
+                                 <property name="unpaid"
+                                           expression="get-property('unpaid')"
+                                           scope="default"
+                                           type="STRING"
+                                           description="Unpaid"/>
+                                 <property name="current_month"
+                                           expression="get-property('current_month')"
+                                           scope="default"
+                                           type="STRING"
+                                           description="Current_Month"/>
+                                 <log level="custom">
+                                    <property name="Before getting response" value="*************"/>
+                                 </log>
+                                 <property name="response"
+                                           expression="get-property('ReposneBodyPost')"
+                                           scope="default"
+                                           type="STRING"/>
+                                 <log level="custom">
+                                    <property name="After getting response" value="*************"/>
+                                 </log>
+                                 <log level="custom">
+                                    <property name="property_body" expression="get-property('ReposneBodyPost')"/>
+                                 </log>
+                                 <payloadFactory media-type="xml">
+                                    <format>
+                                       <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">
+                                          <SOAP-ENV:Body>
+                                             <ns0:GetSubscriberInfoResponse xmlns:ns0="urn:vimpelcom:carrier-billing-hub:types">
+                                                <ns0:CorrelationId>$1</ns0:CorrelationId>
+                                                <ns0:TransactionId>$2</ns0:TransactionId>
+                                                <ns0:Message>SUCCESS</ns0:Message>$3</ns0:GetSubscriberInfoResponse>
+                                          </SOAP-ENV:Body>
+                                       </SOAP-ENV:Envelope>
+                                    </format>
+                                    <args>
+                                       <arg evaluator="xml" expression="get-property('CorrelationId')"/>
+                                       <arg evaluator="xml" expression="get-property('TransactionId')"/>
+                                       <arg evaluator="xml" expression="get-property('response')"/>
+                                    </args>
+                                 </payloadFactory>
+                                 <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                                 <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                                 <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                                 <header name="To" scope="default" action="remove"/>
+                                 <log level="full"/>
+                                 <respond/>
+                              </else>
+                           </filter>
+                        </then>
+                        <else>
+                           <log level="full"/>
+                           <property name="FORCE_ERROR_ON_SOAP_FAULT"
+                                     value="true"
+                                     scope="default"
+                                     type="STRING"/>
+                           <dbreport description="">
+                              <connection>
+                                 <pool>
+                                    <dsName>jdbc/ott</dsName>
+                                 </pool>
+                              </connection>
+                              <statement>
+                                 <sql>Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET  TRANSACTION_ID = ? , STATUS = 'KO' , CAUSE = 'SUBSCRIBER_NOT_FOUND' ,`DESCRIPTION`='Subscriber cannot be found using IMSI provided.' WHERE CORRELATION_ID= ? and INTERFACE_NAME= 'GetSubscriberInfo'</sql>
+                                 <parameter expression="$ctx:TransactionId" type="CHAR"/>
+                                 <parameter expression="$ctx:CorrelationId" type="CHAR"/>
+                              </statement>
+                           </dbreport>
+                           <payloadFactory media-type="xml">
+                              <format>
+                                 <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">
+                                    <SOAP-ENV:Body>
+                                       <SOAP-ENV:Fault>
+                                          <faultcode xmlns="">SOAP-ENV:Server</faultcode>
+                                          <faultstring xmlns="">This is an operation implementation generated fault</faultstring>
+                                          <faultactor xmlns=""/>
+                                          <detail xmlns="">
+                                             <ns:LogicalFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                              xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                                              xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                                              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                                                <ns:CorrelationId>$1</ns:CorrelationId>
+                                                <ns:Cause>SUBSCRIBER_NOT_FOUND</ns:Cause>
+                                                <ns:Message>Subscriber cannot be found using IMSI provided.</ns:Message>
+                                                <ns:UserMessage>Subscriber cannot be found using IMSI provided.</ns:UserMessage>
+                                             </ns:LogicalFault>
+                                          </detail>
+                                       </SOAP-ENV:Fault>
+                                    </SOAP-ENV:Body>
+                                 </SOAP-ENV:Envelope>
+                              </format>
+                              <args>
+                                 <arg evaluator="xml" expression="get-property('CorrelationId')"/>
+                              </args>
+                           </payloadFactory>
+                           <makefault version="soap11">
+                              <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                                    value="soap11Env:Server"/>
+                              <reason value="This is an operation implementation generated fault"/>
+                              <role/>
+                              <detail xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                      expression="$body//ns:LogicalFault"/>
+                           </makefault>
+                           <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                           <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                           <property name="HTTP_SC" value="500" scope="axis2" type="STRING"/>
+                           <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                           <header name="To" scope="default" action="remove"/>
+                           <respond/>
+                        </else>
+                     </filter>
+                  </then>
+                  <else>
+                     <log level="full"/>
+                     <dbreport>
+                        <connection>
+                           <pool>
+                              <dsName>jdbc/ott</dsName>
+                           </pool>
+                        </connection>
+                        <statement>
+                           <sql>INSERT INTO OTTHub_Wso2.HUB_TRANSACTION_STORE (CORRELATION_ID, TRANSACTION_ID, INTERFACE_NAME, STATUS, TIMEIN, Cause) VALUES (?,?,'GetSubscriberInfo','KO',NOW(),'INVALID_DATA')
+					</sql>
+                           <parameter expression="get-property('CorrelationId')" type="VARCHAR"/>
+                           <parameter expression="get-property('TransactionId')" type="VARCHAR"/>
+                        </statement>
+                     </dbreport>
+                     <property name="FORCE_ERROR_ON_SOAP_FAULT"
+                               value="true"
+                               scope="default"
+                               type="STRING"/>
+                     <payloadFactory media-type="xml">
+                        <format>
+                           <ns:MisbehaviorFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                                xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                              <ns:CorrelationId>$1</ns:CorrelationId>
+                              <ns:Cause>INVALID_DATA</ns:Cause>
+                              <ns:Message/>
+                           </ns:MisbehaviorFault>
+                        </format>
+                        <args>
+                           <arg evaluator="xml" expression="get-property('CorrelationId')"/>
+                        </args>
+                     </payloadFactory>
+                     <makefault version="soap11">
+                        <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                              value="soap11Env:Server"/>
+                        <reason value="This is an operation implementation generated fault"/>
+                        <role/>
+                        <detail xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                expression="$body//ns:MisbehaviorFault "/>
+                     </makefault>
+                     <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                     <property name="HTTP_SC" value="500" scope="axis2" type="STRING"/>
+                     <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                     <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                     <header name="To" scope="default" action="remove"/>
+                     <respond/>
+                  </else>
+               </filter>
+            </case>
+            <case regex="ReserveFundsRequest">
+               <log level="custom">
+                  <property name="operation" value="ReserveFundsRequeste"/>
+                  <property xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                            name="CorrelationID"
+                            expression="$body//ns:ReserveFundsRequest/ns:CorrelationId"/>
+                  <property xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                            name="ChargeAmount"
+                            expression="$body//ns:ReserveFundsRequest/ns:ChargeAmount"/>
+                  <property xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                            name="IMSI"
+                            expression="$body//ns:ReserveFundsRequest/ns:IMSI"/>
+                  <property xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                            name="PartnerId"
+                            expression="$body//ns:ReserveFundsRequest/ns:PartnerId"/>
+                  <property xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                            name="PurchaseTime"
+                            expression="$body//ns:ReserveFundsRequest/ns:PurchaseTime"/>
+                  <property xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                            name="Currency"
+                            expression="$body//ns:ReserveFundsRequest/ns:Currency"/>
+               </log>
+               <property xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                         name="CorrelationID"
+                         expression="$body//ns:ReserveFundsRequest/ns:CorrelationId"
+                         scope="default"
+                         type="STRING"/>
+               <property xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                         name="ChargeAmount"
+                         expression="$body//ns:ReserveFundsRequest/ns:ChargeAmount"
+                         scope="default"
+                         type="STRING"/>
+               <property xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                         name="IMSI"
+                         expression="$body//ns:ReserveFundsRequest/ns:IMSI"
+                         scope="default"
+                         type="STRING"/>
+               <property xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                         name="PartnerId"
+                         expression="$body//ns:ReserveFundsRequest/ns:PartnerId"
+                         scope="default"
+                         type="STRING"/>
+               <property xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                         name="PurchaseTime"
+                         expression="$body//ns:ReserveFundsRequest/ns:PurchaseTime"
+                         scope="default"
+                         type="STRING"/>
+               <property xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                         name="Currency"
+                         expression="$body//ns:ReserveFundsRequest/ns:Currency"
+                         scope="default"
+                         type="STRING"/>
+               <property xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                         name="Description"
+                         expression="$body//ns:ReserveFundsRequest/ns:ItemDescription"
+                         scope="default"
+                         type="STRING"/>
+               <call>
+                  <endpoint>
+                     <http method="GET" uri-template="http://10.50.13.134:8282/generateId"/>
+                  </endpoint>
+               </call>
+               <property name="TransactionId"
+                         expression="$body//transaction"
+                         scope="default"
+                         type="STRING"/>
+               <class name="com.arcana.gdb.ReserveFunds"/>
+               <class name="com.arcana.convert.micros"/>
+               <log level="custom">
+                  <property name="Status" expression="get-property('status')"/>
+                  <property name="AbdulRab*****************************Status###################################################"
+                            expression="get-property('pkr')"/>
+                  <property name="Status" value="after Classes"/>
+               </log>
+               <switch source="get-property('status')">
+                  <case regex="OK">
+                     <log level="custom">
+                        <property name="Status" value="OK"/>
+                     </log>
+                     <payloadFactory media-type="xml">
+                        <format>
+                           <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">
+                              <SOAP-ENV:Body>
+                                 <ns0:ReserveFundsResponse xmlns:ns0="urn:vimpelcom:carrier-billing-hub:types">
+                                    <ns0:CorrelationId>$1</ns0:CorrelationId>
+                                    <ns0:TransactionId/>
+                                    <ns0:Message>SUCCESS</ns0:Message>
+                                 </ns0:ReserveFundsResponse>
+                              </SOAP-ENV:Body>
+                           </SOAP-ENV:Envelope>
+                        </format>
+                        <args>
+                           <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                           <arg evaluator="xml" expression="$ctx:TransactionId"/>
+                        </args>
+                     </payloadFactory>
+                     <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                     <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                     <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                     <header name="To" action="remove"/>
+                     <log level="custom">
+                        <property name="Status" value="Responding Success"/>
+                     </log>
+                     <respond/>
+                  </case>
+                  <case regex="KO">
+                     <log level="custom">
+                        <property name="Status" value="KO"/>
+                     </log>
+                     <log level="custom">
+                        <property name="Status" value="Responding KO"/>
+                     </log>
+                     <payloadFactory media-type="xml">
+                        <format>
+                           <ns:LogicalFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                            xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                            xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                              <ns:CorrelationId>$1</ns:CorrelationId>
+                              <ns:Cause>$2</ns:Cause>
+                              <ns:Message>$3</ns:Message>
+                              <ns:UserMessage>$3</ns:UserMessage>
+                           </ns:LogicalFault>
+                        </format>
+                        <args>
+                           <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                           <arg evaluator="xml" expression="$ctx:CAUSE"/>
+                           <arg evaluator="xml" expression="$ctx:DESCRIPTION"/>
+                        </args>
+                     </payloadFactory>
+                     <makefault version="soap11">
+                        <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                              value="soap11Env:Server"/>
+                        <reason value="This is an operation implementation generated fault"/>
+                        <role/>
+                        <detail xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                expression="$body/ns:LogicalFault"/>
+                     </makefault>
+                     <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                     <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                     <property name="HTTP_SC" value="500" scope="axis2"/>
+                     <property name="RESPONSE" value="true"/>
+                     <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                     <header name="To" action="remove"/>
+                     <respond/>
+                  </case>
+                  <case regex="NotFound">
+                     <log level="custom">
+                        <property name="Status" value="Responding KO"/>
+                     </log>
+                     <log level="custom">
+                        <property name="Currency" value="CHECK"/>
+                     </log>
+                     <filter xpath="$ctx:pkr &gt; 2000">
+                        <then>
+                           <property name="FORCE_ERROR_ON_SOAP_FAULT"
+                                     value="true"
+                                     scope="default"
+                                     type="STRING"/>
+                           <dbreport description="">
+                              <connection>
+                                 <pool>
+                                    <dsName>jdbc/ott</dsName>
+                                 </pool>
+                              </connection>
+                              <statement>
+                                 <sql>Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET  TRANSACTION_ID = ? , STATUS = 'KO' , CAUSE = 'CHARGE_EXCEEDS_LIMIT' ,`DESCRIPTION`='The total charge for the specific subscriber has exceeds his limit.' WHERE CORRELATION_ID= ? and INTERFACE_NAME= 'ReserveFunds'</sql>
+                                 <parameter expression="$ctx:TRANSACTION_ID" type="CHAR"/>
+                                 <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                              </statement>
+                           </dbreport>
+                           <payloadFactory media-type="xml">
+                              <format>
+                                 <ns:LogicalFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                  xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                                  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                                    <ns:CorrelationId>$1</ns:CorrelationId>
+                                    <ns:Cause>CHARGE_EXCEEDS_LIMIT</ns:Cause>
+                                    <ns:Message>The total charge for the specific subscriber has exceeds his limit.</ns:Message>
+                                    <ns:UserMessage>The total charge for the specific subscriber has exceeds his limit.</ns:UserMessage>
+                                 </ns:LogicalFault>
+                              </format>
+                              <args>
+                                 <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                              </args>
+                           </payloadFactory>
+                           <makefault version="soap11">
+                              <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                                    value="soap11Env:Server"/>
+                              <reason value="This is an operation implementation generated fault"/>
+                              <role/>
+                              <detail xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                      expression="$body/ns:LogicalFault"/>
+                           </makefault>
+                           <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                           <property name="HTTP_SC" value="500" scope="axis2"/>
+                           <property name="RESPONSE" value="true"/>
+                           <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                           <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                           <header name="To" action="remove"/>
+                           <respond/>
+                        </then>
+                        <else/>
+                     </filter>
+                     <property name="amount" expression="base64Encode($ctx:pkr)"/>
+                     <property name="pkr" expression="fn:concat(($ctx:pkr),'00')"/>
+                     <log level="custom">
+                        <property name="PKR" value="CHECK"/>
+                        <property name="pkr" expression="fn:concat(($ctx:pkr),'00')"/>
+                     </log>
+                     <filter xpath="$ctx:Currency != 'PKR'">
+                        <then>
+                           <property name="FORCE_ERROR_ON_SOAP_FAULT"
+                                     value="true"
+                                     scope="default"
+                                     type="STRING"/>
+                           <dbreport description="">
+                              <connection>
+                                 <pool>
+                                    <dsName>jdbc/ott</dsName>
+                                 </pool>
+                              </connection>
+                              <statement>
+                                 <sql>Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET  TRANSACTION_ID = ? , STATUS = 'KO' , CAUSE = 'INVALID_CURRENCY' ,`DESCRIPTION`='Requested currency cannot be handled.' WHERE CORRELATION_ID= ? and INTERFACE_NAME= 'ReserveFunds'</sql>
+                                 <parameter expression="$ctx:TRANSACTION_ID" type="CHAR"/>
+                                 <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                              </statement>
+                           </dbreport>
+                           <payloadFactory media-type="xml">
+                              <format>
+                                 <ns:LogicalFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                  xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                                  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                                    <ns:CorrelationId>$1</ns:CorrelationId>
+                                    <ns:Cause>INVALID_CURRENCY</ns:Cause>
+                                    <ns:Message>Requested currency cannot be handled.</ns:Message>
+                                    <ns:UserMessage>Requested currency cannot be handled.</ns:UserMessage>
+                                 </ns:LogicalFault>
+                              </format>
+                              <args>
+                                 <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                              </args>
+                           </payloadFactory>
+                           <makefault version="soap11">
+                              <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                                    value="soap11Env:Server"/>
+                              <reason value="This is an operation implementation generated fault"/>
+                              <role/>
+                              <detail xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                      expression="$body/ns:LogicalFault"/>
+                           </makefault>
+                           <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                           <property name="HTTP_SC" value="500" scope="axis2"/>
+                           <property name="RESPONSE" value="true"/>
+                           <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                           <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                           <header name="To" action="remove"/>
+                           <respond/>
+                        </then>
+                        <else/>
+                     </filter>
+                     <property name="Status"
+                               expression="get-property('status')"
+                               scope="default"
+                               type="STRING"/>
+                     <dbreport>
+                        <connection>
+                           <pool>
+                              <dsName>jdbc/ott</dsName>
+                           </pool>
+                        </connection>
+                        <statement>
+                           <sql>INSERT into OTTHub_Wso2.HUB_TRANSACTION_STORE (CORRELATION_ID,STATUS,INTERFACE_NAME,AMOUNT) VALUES (?,?,?,?)</sql>
+                           <parameter expression="$ctx:CorrelationID" type="VARCHAR"/>
+                           <parameter value="PENDING" type="VARCHAR"/>
+                           <parameter value="ReserveFunds" type="VARCHAR"/>
+                           <parameter expression="$ctx:ChargeAmount" type="VARCHAR"/>
+                        </statement>
+                     </dbreport>
+                     <log level="custom">
+                        <property name="BEFORE" value="COMPTEL"/>
+                     </log>
+                     <payloadFactory media-type="xml">
+                        <format>
+                           <soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope"
+                                          xmlns:ins="http://soa.comptel.com/2011/02/instantlink">
+                              <soap:Header/>
+                              <soap:Body>
+                                 <ins:DisplayRequest>
+                                    <ins:RequestHeader>
+                                       <ins:NeType>BST</ins:NeType>
+                                       <ins:OrderNo>$2</ins:OrderNo>
+                                       <ins:Priority>5</ins:Priority>
+                                       <ins:ReqUser>bss</ins:ReqUser>
+                                       <ins:RetransmissionFlag>false</ins:RetransmissionFlag>
+                                       <ins:BypassLock>false</ins:BypassLock>
+                                    </ins:RequestHeader>
+                                    <ins:RequestParameters>
+                                       <ins:Parameter name="IMSI" value="$1"/>
+                                       <ins:Parameter name="NE_TYPE" value="BST"/>
+                                       <ins:Parameter name="REQ_OBJ" value="1"/>
+                                       <ins:Parameter name="REQ_TYPE" value="4"/>
+                                    </ins:RequestParameters>
+                                 </ins:DisplayRequest>
+                              </soap:Body>
+                           </soap:Envelope>
+                        </format>
+                        <args>
+                           <arg evaluator="xml" expression="$ctx:IMSI"/>
+                           <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                        </args>
+                     </payloadFactory>
+                     <call>
+                        <endpoint name="ComptelEP">
+                           <address uri="http://10.50.14.234:44006/ilws/InstantLinkSOA" format="soap12">
+                              <timeout>
+                                 <duration>10000</duration>
+                                 <responseAction>fault</responseAction>
+                              </timeout>
+                              <suspendOnFailure>
+                                 <errorCodes>-1</errorCodes>
+                                 <initialDuration>0</initialDuration>
+                                 <progressionFactor>1.0</progressionFactor>
+                                 <maximumDuration>0</maximumDuration>
+                              </suspendOnFailure>
+                              <markForSuspension>
+                                 <errorCodes>-1</errorCodes>
+                              </markForSuspension>
+                           </address>
+                        </endpoint>
+                     </call>
+                     <property xmlns:ns="http://soa.comptel.com/2011/02/instantlink"
+                               name="msisdn"
+                               expression="//ns:Response/ns:ResponseParameters/ns:Parameter[@name='TS21_MSISDN1']/@value"
+                               scope="default"
+                               type="STRING"/>
+                     <log level="full"/>
+                     <log level="custom">
+                        <property name="Comptel"
+                                  value="************************************************************************"/>
+                        <property xmlns:ns="http://soa.comptel.com/2011/02/instantlink"
+                                  name="newstat"
+                                  expression="//ns:Response/ns:ResponseParameters/ns:Parameter[@name='ODBOC']/@value"/>
+                        <property xmlns:ns="http://soa.comptel.com/2011/02/instantlink"
+                                  name="msisdn"
+                                  expression="//ns:Response/ns:ResponseParameters/ns:Parameter[@name='TS21_MSISDN1']/@value"/>
+                     </log>
+                     <filter xmlns:ns="http://soa.comptel.com/2011/02/instantlink"
+                             xpath="//ns:Response/ns:ResponseParameters/ns:Parameter[@name='ODBOC']/@value = 1">
+                        <then>
+                           <property name="FORCE_ERROR_ON_SOAP_FAULT"
+                                     value="true"
+                                     scope="default"
+                                     type="STRING"/>
+                           <dbreport description="">
+                              <connection>
+                                 <pool>
+                                    <dsName>jdbc/ott</dsName>
+                                 </pool>
+                              </connection>
+                              <statement>
+                                 <sql>Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET  TRANSACTION_ID = ? , STATUS = 'KO' , CAUSE = 'ACCOUNT_SUSPENDED' ,`DESCRIPTION`='Subscriber cannot be found using IMSI provided.' WHERE CORRELATION_ID= ? and INTERFACE_NAME= 'ReserveFunds'</sql>
+                                 <parameter expression="$ctx:TransactionId" type="CHAR"/>
+                                 <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                              </statement>
+                           </dbreport>
+                           <payloadFactory media-type="xml">
+                              <format>
+                                 <ns:LogicalFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                  xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                                  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                                    <ns:CorrelationId>$1</ns:CorrelationId>
+                                    <ns:Cause>ACCOUNT_SUSPENDED</ns:Cause>
+                                    <ns:Message>Subscriber cannot be found using IMSI provided.</ns:Message>
+                                    <ns:UserMessage>Subscriber cannot be found using IMSI provided.</ns:UserMessage>
+                                 </ns:LogicalFault>
+                              </format>
+                              <args>
+                                 <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                              </args>
+                           </payloadFactory>
+                           <enrich>
+                              <source type="body" clone="true"/>
+                              <target type="property" property="ORGINAL_PAYLOAD"/>
+                           </enrich>
+                           <makefault version="soap11">
+                              <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                                    value="soap11Env:Server"/>
+                              <reason value="This is an operation implementation generated fault"/>
+                              <role/>
+                              <detail expression="$ctx:ORGINAL_PAYLOAD"/>
+                           </makefault>
+                           <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                           <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                           <property name="HTTP_SC" value="500" scope="axis2"/>
+                           <property name="RESPONSE" value="true"/>
+                           <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                           <header name="To" action="remove"/>
+                           <respond/>
+                        </then>
+                     </filter>
+                     <filter xmlns:ns="http://soa.comptel.com/2011/02/instantlink"
+                             xpath="//ns:Response/ns:ResponseHeader/ns:Status != 9 ">
+                        <then>
+                           <property name="FORCE_ERROR_ON_SOAP_FAULT"
+                                     value="true"
+                                     scope="default"
+                                     type="STRING"/>
+                           <dbreport description="">
+                              <connection>
+                                 <pool>
+                                    <dsName>jdbc/ott</dsName>
+                                 </pool>
+                              </connection>
+                              <statement>
+                                 <sql>Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET  TRANSACTION_ID = ? , STATUS = 'KO' , CAUSE = 'SUBSCRIBER_NOT_FOUND' ,`DESCRIPTION`='Subscriber cannot be found using IMSI provided.' WHERE CORRELATION_ID= ? and INTERFACE_NAME= 'ReserveFunds'</sql>
+                                 <parameter expression="$ctx:TRANSACTION_ID" type="CHAR"/>
+                                 <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                              </statement>
+                           </dbreport>
+                           <payloadFactory media-type="xml">
+                              <format>
+                                 <ns:LogicalFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                  xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                                  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                                    <ns:CorrelationId>$1</ns:CorrelationId>
+                                    <ns:Cause>SUBSCRIBER_NOT_FOUND</ns:Cause>
+                                    <ns:Message>Subscriber cannot be found using IMSI provided.</ns:Message>
+                                    <ns:UserMessage>Subscriber cannot be found using IMSI provided.</ns:UserMessage>
+                                 </ns:LogicalFault>
+                              </format>
+                              <args>
+                                 <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                              </args>
+                           </payloadFactory>
+                           <enrich>
+                              <source type="body" clone="true"/>
+                              <target type="property" property="ORGINAL_PAYLOAD"/>
+                           </enrich>
+                           <makefault version="soap11">
+                              <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                                    value="soap11Env:Server"/>
+                              <reason value="This is an operation implementation generated fault"/>
+                              <role/>
+                              <detail expression="$ctx:ORGINAL_PAYLOAD"/>
+                           </makefault>
+                           <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                           <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                           <property name="HTTP_SC" value="500" scope="axis2"/>
+                           <property name="RESPONSE" value="true"/>
+                           <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                           <header name="To" action="remove"/>
+                           <respond/>
+                        </then>
+                     </filter>
+                     <property xmlns:ns="http://soa.comptel.com/2011/02/instantlink"
+                               name="msisdn"
+                               expression="//ns:Response/ns:ResponseParameters/ns:Parameter[@name='TS21_MSISDN1']/@value"
+                               scope="default"
+                               type="STRING"/>
+                     <log level="custom">
+                        <property xmlns:ns="http://soa.comptel.com/2011/02/instantlink"
+                                  name="msisdn"
+                                  expression="//ns:Response/ns:ResponseParameters/ns:Parameter[@name='TS21_MSISDN1']/@value"/>
+                        <property name="NORMALIZED_MSISDN_FOR_IN"
+                                  expression="fn:concat('',fn:substring(get-property('msisdn'),3))"/>
+                     </log>
+                     <property xmlns:ns="http://soa.comptel.com/2011/02/instantlink"
+                               name="msisdn"
+                               expression="//ns:Response/ns:ResponseParameters/ns:Parameter[@name='TS21_MSISDN1']/@value"
+                               scope="default"
+                               type="STRING"/>
+                     <property name="NORMALIZED_MSISDN_FOR_IN"
+                               expression="fn:concat('',fn:substring(get-property('msisdn'),3))"
+                               scope="default"
+                               type="STRING"/>
+                     <payloadFactory media-type="xml">
+                        <format>
+                           <methodCall xmlns="">
+                              <methodName>GetBalanceAndDate</methodName>
+                              <params>
+                                 <param>
+                                    <value>
+                                       <struct>
+                                          <member>
+                                             <name>originTransactionID</name>
+                                             <value>
+                                                <string>123123</string>
+                                             </value>
+                                          </member>
+                                          <member>
+                                             <name>originNodeType</name>
+                                             <value>
+                                                <string>EXT</string>
+                                             </value>
+                                          </member>
+                                          <member>
+                                             <name>originHostName</name>
+                                             <value>
+                                                <string>1</string>
+                                             </value>
+                                          </member>
+                                          <member>
+                                             <name>originTimeStamp</name>
+                                             <value>
+                                                <dateTime.iso8601>20060113T22:28:54+0000</dateTime.iso8601>
+                                             </value>
+                                          </member>
+                                          <member>
+                                             <name>subscriberNumber</name>
+                                             <value>
+                                                <string>$1</string>
+                                             </value>
+                                          </member>
+                                       </struct>
+                                    </value>
+                                 </param>
+                              </params>
+                           </methodCall>
+                        </format>
+                        <args>
+                           <arg evaluator="xml" expression="$ctx:NORMALIZED_MSISDN_FOR_IN"/>
+                           <arg evaluator="xml" expression="$ctx:TRANSACTION_ID"/>
+                        </args>
+                     </payloadFactory>
+                     <enrich>
+                        <source type="body" clone="true"/>
+                        <target type="property" property="IN_PAYLOADRequest"/>
+                     </enrich>
+                     <header name="User-Agent" scope="transport" value="UGw Server/4.3/1.0"/>
+                     <header name="Authorization"
+                             scope="transport"
+                             value="Basic SU5UQUNBR0Q6UGF0Y2gjMTIz"/>
+                     <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                     <property name="DISABLE_CHUNKING"
+                               value="true"
+                               scope="axis2"
+                               type="STRING"/>
+                     <call>
+                        <endpoint name="IN_EP">
+                           <http format="rest"
+                                 method="POST"
+                                 uri-template="http://10.13.32.156:10010/Air">
+                              <timeout>
+                                 <duration>10000</duration>
+                                 <responseAction>fault</responseAction>
+                              </timeout>
+                              <suspendOnFailure>
+                                 <errorCodes>-1</errorCodes>
+                                 <initialDuration>0</initialDuration>
+                                 <progressionFactor>1.0</progressionFactor>
+                                 <maximumDuration>0</maximumDuration>
+                              </suspendOnFailure>
+                              <markForSuspension>
+                                 <errorCodes>-1</errorCodes>
+                              </markForSuspension>
+                           </http>
+                        </endpoint>
+                     </call>
+                     <dbreport description="">
+                        <connection>
+                           <pool>
+                              <dsName>jdbc/ottlog</dsName>
+                           </pool>
+                        </connection>
+                        <statement>
+                           <sql>INSERT INTO `LOG_RESPONSE`` (`ID`, `SYSTEM_NAME`, `INTERFACE_NAME`, `REQUEST`, `ORDER_ID`, `SOURCE`) VALUES (?,?,?,?,?,?)</sql>
+                           <parameter expression="$ctx:TransactionId" type="CHAR"/>
+                           <parameter value="ReserveFunds" type="CHAR"/>
+                           <parameter value="GetBalanceAndDate" type="CHAR"/>
+                           <parameter expression="$ctx:IN_PAYLOADRequest" type="CHAR"/>
+                           <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                           <parameter expression="$ctx:Responsecode" type="CHAR"/>
+                        </statement>
+                     </dbreport>
+                     <log level="full"/>
+                     <log level="custom">
+                        <property name="AIN 1st"
+                                  value="************************************************************************"/>
+                     </log>
+                     <property name="Responsecode"
+                               expression="$body//methodResponse/params/param/value/struct/member[name='responseCode']/value/i4"/>
+                     <enrich>
+                        <source type="body" clone="true"/>
+                        <target type="property" property="IN_PAYLOAD"/>
+                     </enrich>
+                     <dbreport description="">
+                        <connection>
+                           <pool>
+                              <dsName>jdbc/ottlog</dsName>
+                           </pool>
+                        </connection>
+                        <statement>
+                           <sql>INSERT INTO `LOG_RESPONSE` (`ID`, `SYSTEM_NAME`, `INTERFACE_NAME`, `RESPONSE`, `ORDER_ID`, `SOURCE`) VALUES (?,?,?,?,?,?)</sql>
+                           <parameter expression="$ctx:TransactionId" type="CHAR"/>
+                           <parameter value="ReserveFunds" type="CHAR"/>
+                           <parameter value="GetBalanceAndDateResponse" type="CHAR"/>
+                           <parameter expression="$ctx:IN_PAYLOAD" type="CHAR"/>
+                           <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                           <parameter expression="$ctx:Responsecode" type="CHAR"/>
+                        </statement>
+                     </dbreport>
+                     <filter xpath="$body//methodResponse/params/param/value/struct/member[name='offerInformationList']/value/array/data/value/struct/member[name='offerID']/value/i4='7000'">
+                        <then>
+                           <class name="com.arcana.reservefund.ReservePostpaid"/>
+                           <dbreport description="">
+                              <connection>
+                                 <pool>
+                                    <dsName>jdbc/ottlog</dsName>
+                                 </pool>
+                              </connection>
+                              <statement>
+                                 <sql>INSERT INTO `LOG_REQUEST` (`ID`, `SYSTEM_NAME`, `INTERFACE_NAME`, `REQUEST`, `ORDER_ID`, `SOURCE`) VALUES (?,?,?,?,?,?)</sql>
+                                 <parameter expression="$ctx:TransactionId" type="CHAR"/>
+                                 <parameter value="ReserveFunds" type="CHAR"/>
+                                 <parameter value="POSTPONDRESPONSE" type="CHAR"/>
+                                 <parameter expression="$ctx:IN_PAYLOADRequest" type="CHAR"/>
+                                 <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                                 <parameter expression="$ctx:reason" type="CHAR"/>
+                              </statement>
+                           </dbreport>
+                           <switch source="get-property('status')">
+                              <case regex="OK">
+                                 <dbreport description="">
+                                    <connection>
+                                       <pool>
+                                          <dsName>jdbc/ott</dsName>
+                                       </pool>
+                                    </connection>
+                                    <statement>
+                                       <sql>Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET  TRANSACTION_ID = ? ,MSISDN =?,SUBSCRIBER_TYPE ='POSTPAID' , STATUS = 'OK' , CAUSE = '' WHERE CORRELATION_ID= ? and INTERFACE_NAME= 'ReserveFunds'</sql>
+                                       <parameter expression="$ctx:TransactionId" type="CHAR"/>
+                                       <parameter expression="$ctx:msisdn" type="CHAR"/>
+                                       <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                                    </statement>
+                                 </dbreport>
+                                 <payloadFactory media-type="xml">
+                                    <format>
+                                       <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">
+                                          <SOAP-ENV:Body>
+                                             <ns0:ReserveFundsResponse xmlns:ns0="urn:vimpelcom:carrier-billing-hub:types">
+                                                <ns0:CorrelationId>$1</ns0:CorrelationId>
+                                                <ns0:TransactionId>$2</ns0:TransactionId>
+                                                <ns0:Message>SUCCESS</ns0:Message>
+                                             </ns0:ReserveFundsResponse>
+                                          </SOAP-ENV:Body>
+                                       </SOAP-ENV:Envelope>
+                                    </format>
+                                    <args>
+                                       <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                                       <arg evaluator="xml" expression="$ctx:TransactionId"/>
+                                    </args>
+                                 </payloadFactory>
+                                 <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                                 <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                                 <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                                 <header name="To" action="remove"/>
+                                 <respond/>
+                              </case>
+                              <case regex="KO">
+                                 <property name="FORCE_ERROR_ON_SOAP_FAULT"
+                                           value="true"
+                                           scope="default"
+                                           type="STRING"/>
+                                 <dbreport description="">
+                                    <connection>
+                                       <pool>
+                                          <dsName>jdbc/ott</dsName>
+                                       </pool>
+                                    </connection>
+                                    <statement>
+                                       <sql>Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET  TRANSACTION_ID = ? , STATUS = 'KO' , CAUSE = 'GENERAL_DECLINE' ,`DESCRIPTION`='GENERAL_DECLINE' WHERE CORRELATION_ID= ? and INTERFACE_NAME= 'ReserveFunds'</sql>
+                                       <parameter expression="$ctx:TRANSACTION_ID" type="CHAR"/>
+                                       <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                                    </statement>
+                                 </dbreport>
+                                 <payloadFactory media-type="xml">
+                                    <format>
+                                       <ns:SystemFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                       xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                                       xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                                       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                                          <ns:CorrelationId>$1</ns:CorrelationId>
+                                          <ns:Cause>GENERAL_DECLINE</ns:Cause>
+                                          <ns:Message>GENERAL_DECLINE.</ns:Message>
+                                          <ns:UserMessage>GENERAL_DECLINE.</ns:UserMessage>
+                                       </ns:SystemFault>
+                                    </format>
+                                    <args>
+                                       <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                                    </args>
+                                 </payloadFactory>
+                                 <makefault version="soap11">
+                                    <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                                          value="soap11Env:Server"/>
+                                    <reason value="This is an operation implementation generated fault"/>
+                                    <role/>
+                                    <detail xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                            expression="$body/ns:SystemFault"/>
+                                 </makefault>
+                                 <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                                 <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                                 <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                                 <header name="To" action="remove"/>
+                                 <respond/>
+                              </case>
+                              <case regex="timeout">
+                                 <property name="FORCE_ERROR_ON_SOAP_FAULT"
+                                           value="true"
+                                           scope="default"
+                                           type="STRING"/>
+                                 <dbreport description="">
+                                    <connection>
+                                       <pool>
+                                          <dsName>jdbc/ott</dsName>
+                                       </pool>
+                                    </connection>
+                                    <statement>
+                                       <sql>Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET  TRANSACTION_ID = ? , STATUS = 'SYSTEM_BUSY' , CAUSE = 'SYSTEM_BUSY' ,`DESCRIPTION`='GENERAL_DECLINE' WHERE CORRELATION_ID= ? and INTERFACE_NAME= 'ReserveFunds'</sql>
+                                       <parameter expression="$ctx:TRANSACTION_ID" type="CHAR"/>
+                                       <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                                    </statement>
+                                 </dbreport>
+                                 <payloadFactory media-type="xml">
+                                    <format>
+                                       <ns:SystemFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                       xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                                       xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                                       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                                          <ns:CorrelationId>$1</ns:CorrelationId>
+                                          <ns:Cause>SYSTEM_BUSY</ns:Cause>
+                                          <ns:Message>System is busy</ns:Message>
+                                          <ns:UserMessage>System is busy</ns:UserMessage>
+                                       </ns:SystemFault>
+                                    </format>
+                                    <args>
+                                       <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                                    </args>
+                                 </payloadFactory>
+                                 <makefault version="soap11">
+                                    <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                                          value="soap11Env:Server"/>
+                                    <reason value="This is an operation implementation generated fault"/>
+                                    <role/>
+                                    <detail xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                            expression="$body/ns:SystemFault"/>
+                                 </makefault>
+                                 <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                                 <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                                 <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                                 <header name="To" action="remove"/>
+                                 <respond/>
+                              </case>
+                           </switch>
+                        </then>
+                     </filter>
+                     <log level="custom">
+                        <property name="AINRESPONSE"
+                                  expression="$body//methodResponse/params/param/value/struct/member[name='responseCode']/value/i4"/>
+                     </log>
+                     <filter xpath="$body//methodResponse/params/param/value/struct/member[name='responseCode']/value/i4='503'">
+                        <then>
+                           <property name="FORCE_ERROR_ON_SOAP_FAULT"
+                                     value="true"
+                                     scope="default"
+                                     type="STRING"/>
+                           <dbreport description="">
+                              <connection>
+                                 <pool>
+                                    <dsName>jdbc/ott</dsName>
+                                 </pool>
+                              </connection>
+                              <statement>
+                                 <sql>Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET  TRANSACTION_ID = ? , STATUS = 'KO' , CAUSE = 'SYSTEM_BUSY' ,`DESCRIPTION`='Exception at IN AIR-UCIP UpdateBalanceAndDate' WHERE CORRELATION_ID= ? and INTERFACE_NAME= 'ReserveFunds'</sql>
+                                 <parameter expression="$ctx:TransactionId" type="CHAR"/>
+                                 <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                              </statement>
+                           </dbreport>
+                           <payloadFactory media-type="xml">
+                              <format>
+                                 <ns:SystemFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                 xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                                 xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                                    <ns:CorrelationId>$1</ns:CorrelationId>
+                                    <ns:Cause>SYSTEM_BUSY</ns:Cause>
+                                    <ns:Message>Exception at IN AIR-UCIP UpdateBalanceAndDate</ns:Message>
+                                    <ns:UserMessage>Exception at IN AIR-UCIP UpdateBalanceAndDate</ns:UserMessage>
+                                 </ns:SystemFault>
+                              </format>
+                              <args>
+                                 <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                              </args>
+                           </payloadFactory>
+                           <makefault version="soap11">
+                              <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                                    value="soap11Env:Server"/>
+                              <reason value="This is an operation implementation generated fault"/>
+                              <role/>
+                              <detail xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                      expression="$body/ns:SystemFault"/>
+                           </makefault>
+                           <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                           <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                           <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                           <header name="To" action="remove"/>
+                           <respond/>
+                        </then>
+                     </filter>
+                     <filter xpath="$body//methodResponse/params/param/value/struct/member[name='offerInformationList']/value/array/data/value/struct/member[name='offerID']/value/i4='1380'">
+                        <then>
+                           <property name="FORCE_ERROR_ON_SOAP_FAULT"
+                                     value="true"
+                                     scope="default"
+                                     type="STRING"/>
+                           <dbreport description="">
+                              <connection>
+                                 <pool>
+                                    <dsName>jdbc/ott</dsName>
+                                 </pool>
+                              </connection>
+                              <statement>
+                                 <sql>Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET  TRANSACTION_ID = ? , STATUS = 'KO' , CAUSE = 'NOT_ELIGIBLE' ,`DESCRIPTION`='Subscriber is no eligible' WHERE CORRELATION_ID= ? and INTERFACE_NAME= 'ReserveFunds'</sql>
+                                 <parameter expression="$ctx:TRANSACTION_ID" type="CHAR"/>
+                                 <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                              </statement>
+                           </dbreport>
+                           <payloadFactory media-type="xml">
+                              <format>
+                                 <ns:LogicalFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                  xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                                  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                                    <ns:CorrelationId>$1</ns:CorrelationId>
+                                    <ns:Cause>NOT_ELIGIBLE</ns:Cause>
+                                    <ns:Message>Subscriber is no eligible</ns:Message>
+                                    <ns:UserMessage>Subscriber is no eligible</ns:UserMessage>
+                                 </ns:LogicalFault>
+                              </format>
+                              <args>
+                                 <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                              </args>
+                           </payloadFactory>
+                           <makefault version="soap11">
+                              <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                                    value="soap11Env:Server"/>
+                              <reason value="This is an operation implementation generated fault"/>
+                              <role/>
+                              <detail xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                      expression="$body/ns:LogicalFault"/>
+                           </makefault>
+                           <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                           <property name="HTTP_SC" value="500" scope="axis2"/>
+                           <property name="RESPONSE" value="true"/>
+                           <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                           <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                           <header name="To" action="remove"/>
+                           <respond/>
+                        </then>
+                     </filter>
+                     <filter xpath="$body//methodResponse/params/param/value/struct/member[name='responseCode']/value/i4='123'">
+                        <then>
+                           <property name="FORCE_ERROR_ON_SOAP_FAULT"
+                                     value="true"
+                                     scope="default"
+                                     type="STRING"/>
+                           <dbreport description="">
+                              <connection>
+                                 <pool>
+                                    <dsName>jdbc/ott</dsName>
+                                 </pool>
+                              </connection>
+                              <statement>
+                                 <sql>Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET  TRANSACTION_ID = ? , STATUS = 'KO' , CAUSE = 'CHARGE_EXCEEDS_LIMIT' ,`DESCRIPTION`="Subscriber doesn't have sufficient funds for this payment." WHERE CORRELATION_ID= ? and INTERFACE_NAME= 'ReserveFunds'</sql>
+                                 <parameter expression="$ctx:TRANSACTION_ID" type="CHAR"/>
+                                 <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                              </statement>
+                           </dbreport>
+                           <payloadFactory media-type="xml">
+                              <format>
+                                 <ns:LogicalFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                  xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                                  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                                    <ns:CorrelationId>$1</ns:CorrelationId>
+                                    <ns:Cause>CHARGE_EXCEEDS_LIMIT</ns:Cause>
+                                    <ns:Message>Subscriber charge exceed limit for this payment.</ns:Message>
+                                    <ns:UserMessage>Subscriber charge exceed limit for this payment.</ns:UserMessage>
+                                 </ns:LogicalFault>
+                              </format>
+                              <args>
+                                 <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                              </args>
+                           </payloadFactory>
+                           <makefault version="soap11">
+                              <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                                    value="soap11Env:Server"/>
+                              <reason value="This is an operation implementation generated fault"/>
+                              <role/>
+                              <detail xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                      expression="$body/ns:LogicalFault"/>
+                           </makefault>
+                           <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                           <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                           <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                           <header name="To" action="remove"/>
+                           <respond/>
+                        </then>
+                     </filter>
+                     <filter xpath="$body//methodResponse/params/param/value/struct/member[name='responseCode']/value/i4='124'">
+                        <then>
+                           <property name="FORCE_ERROR_ON_SOAP_FAULT"
+                                     value="true"
+                                     scope="default"
+                                     type="STRING"/>
+                           <dbreport description="">
+                              <connection>
+                                 <pool>
+                                    <dsName>jdbc/ott</dsName>
+                                 </pool>
+                              </connection>
+                              <statement>
+                                 <sql>Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET  TRANSACTION_ID = ? , STATUS = 'KO' , CAUSE = 'INSUFFICIENT_FUNDS' ,`DESCRIPTION`="Subscriber doesn't have sufficient funds for this payment." WHERE CORRELATION_ID= ? and INTERFACE_NAME= 'ReserveFunds'</sql>
+                                 <parameter expression="$ctx:TRANSACTION_ID" type="CHAR"/>
+                                 <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                              </statement>
+                           </dbreport>
+                           <payloadFactory media-type="xml">
+                              <format>
+                                 <ns:LogicalFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                  xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                                  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                                    <ns:CorrelationId>$1</ns:CorrelationId>
+                                    <ns:Cause>INSUFFICIENT_FUNDS</ns:Cause>
+                                    <ns:Message>Subscriber doesnt have sufficient funds for this payment.</ns:Message>
+                                    <ns:UserMessage>Subscriber doesnt have sufficient funds for this payment.</ns:UserMessage>
+                                 </ns:LogicalFault>
+                              </format>
+                              <args>
+                                 <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                              </args>
+                           </payloadFactory>
+                           <makefault version="soap11">
+                              <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                                    value="soap11Env:Server"/>
+                              <reason value="This is an operation implementation generated fault"/>
+                              <role/>
+                              <detail xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                      expression="$body/ns:LogicalFault"/>
+                           </makefault>
+                           <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                           <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                           <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                           <header name="To" action="remove"/>
+                           <respond/>
+                        </then>
+                     </filter>
+                     <filter xpath="$body//methodResponse/params/param/value/struct/member[name='responseCode']/value/i4='102' or $body//methodResponse/params/param/value/struct/member[name='responseCode']/value/i4='99003' or $body//methodResponse/params/param/value/struct/member[name='responseCode']/value/i4='53078' or $body//methodResponse/params/param/value/struct/member[name='responseCode']/value/i4='71065'">
+                        <then>
+                           <property name="FORCE_ERROR_ON_SOAP_FAULT"
+                                     value="true"
+                                     scope="default"
+                                     type="STRING"/>
+                           <dbreport description="">
+                              <connection>
+                                 <pool>
+                                    <dsName>jdbc/ott</dsName>
+                                 </pool>
+                              </connection>
+                              <statement>
+                                 <sql>Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET  TRANSACTION_ID = ? , STATUS = 'KO' , CAUSE = 'SUBSCRIBER_NOT_FOUND' ,`DESCRIPTION`='Subscriber cannot be found using IMSI provided.' WHERE CORRELATION_ID= ? and INTERFACE_NAME= 'ReserveFunds'</sql>
+                                 <parameter expression="$ctx:TransactionId" type="CHAR"/>
+                                 <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                              </statement>
+                           </dbreport>
+                           <payloadFactory media-type="xml">
+                              <format>
+                                 <ns:LogicalFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                  xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                                  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                                    <ns:CorrelationId>$1</ns:CorrelationId>
+                                    <ns:Cause>SUBSCRIBER_NOT_FOUND</ns:Cause>
+                                    <ns:Message>General Decline.</ns:Message>
+                                    <ns:UserMessage>General Decline.</ns:UserMessage>
+                                 </ns:LogicalFault>
+                              </format>
+                              <args>
+                                 <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                              </args>
+                           </payloadFactory>
+                           <makefault version="soap11">
+                              <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                                    value="soap11Env:Server"/>
+                              <reason value="This is an operation implementation generated fault"/>
+                              <role/>
+                              <detail xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                      expression="$body/ns:LogicalFault"/>
+                           </makefault>
+                           <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                           <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                           <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                           <header name="To" action="remove"/>
+                           <respond/>
+                           <respond/>
+                        </then>
+                     </filter>
+                     <filter xpath="$body//methodResponse/params/param/value/struct/member[name='responseCode']/value/i4 !='0'">
+                        <then>
+                           <property name="FORCE_ERROR_ON_SOAP_FAULT"
+                                     value="true"
+                                     scope="default"
+                                     type="STRING"/>
+                           <payloadFactory media-type="xml">
+                              <format>
+                                 <ns:SystemFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                 xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                                 xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                                    <ns:CorrelationId>$1</ns:CorrelationId>
+                                    <ns:Cause>GENERAL_DECLINE</ns:Cause>
+                                    <ns:Message>General Decline.</ns:Message>
+                                    <ns:UserMessage>General Decline.</ns:UserMessage>
+                                 </ns:SystemFault>
+                              </format>
+                              <args>
+                                 <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                              </args>
+                           </payloadFactory>
+                           <makefault version="soap11">
+                              <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                                    value="soap11Env:Server"/>
+                              <reason value="This is an operation implementation generated fault"/>
+                              <role/>
+                              <detail xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                      expression="$body/ns:SystemFault"/>
+                           </makefault>
+                           <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                           <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                           <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                           <header name="To" action="remove"/>
+                           <respond/>
+                        </then>
+                     </filter>
+                     <payloadFactory media-type="xml">
+                        <format>
+                           <methodCall xmlns="">
+                              <methodName>UpdateBalanceAndDate</methodName>
+                              <params>
+                                 <param>
+                                    <value>
+                                       <struct>
+                                          <member>
+                                             <name>originNodeType</name>
+                                             <value>
+                                                <string>EXT</string>
+                                             </value>
+                                          </member>
+                                          <member>
+                                             <name>originHostName</name>
+                                             <value>
+                                                <string>test</string>
+                                             </value>
+                                          </member>
+                                          <member>
+                                             <name>originTransactionID</name>
+                                             <value>
+                                                <string>1213123</string>
+                                             </value>
+                                          </member>
+                                          <member>
+                                             <name>transactionType</name>
+                                             <value>
+                                                <string>test</string>
+                                             </value>
+                                          </member>
+                                          <member>
+                                             <name>transactionCode</name>
+                                             <value>
+                                                <string>test</string>
+                                             </value>
+                                          </member>
+                                          <member>
+                                             <name>externalData1</name>
+                                             <value>
+                                                <string>test_VAS</string>
+                                             </value>
+                                          </member>
+                                          <member>
+                                             <name>externalData2</name>
+                                             <value>
+                                                <string>test_VAS</string>
+                                             </value>
+                                          </member>
+                                          <member>
+                                             <name>originTimeStamp</name>
+                                             <value>
+                                                <dateTime.iso8601>20121228T19:00:27+0500</dateTime.iso8601>
+                                             </value>
+                                          </member>
+                                          <member>
+                                             <name>transactionCurrency</name>
+                                             <value>
+                                                <string>PKR</string>
+                                             </value>
+                                          </member>
+                                          <member>
+                                             <name>subscriberNumber</name>
+                                             <value>
+                                                <string>$1</string>
+                                             </value>
+                                          </member>
+                                          <member>
+                                             <name>adjustmentAmountRelative</name>
+                                             <value>
+                                                <string>-$3</string>
+                                             </value>
+                                          </member>
+                                       </struct>
+                                    </value>
+                                 </param>
+                              </params>
+                           </methodCall>
+                        </format>
+                        <args>
+                           <arg evaluator="xml" expression="$ctx:NORMALIZED_MSISDN_FOR_IN"/>
+                           <arg evaluator="xml" expression="$ctx:TransactionId"/>
+                           <arg evaluator="xml" expression="$ctx:pkr"/>
+                        </args>
+                     </payloadFactory>
+                     <header name="User-Agent" scope="transport" value="UGw Server/4.3/1.0"/>
+                     <header name="Authorization"
+                             scope="transport"
+                             value="Basic SU5UQUNBR0Q6UGF0Y2gjMTIz"/>
+                     <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                     <property name="DISABLE_CHUNKING"
+                               value="true"
+                               scope="axis2"
+                               type="STRING"/>
+                     <enrich>
+                        <source type="body" clone="true"/>
+                        <target type="property" property="IN_PAYLOADRequest"/>
+                     </enrich>
+                     <dbreport description="">
+                        <connection>
+                           <pool>
+                              <dsName>jdbc/ottlog</dsName>
+                           </pool>
+                        </connection>
+                        <statement>
+                           <sql>INSERT INTO `LOG_REQUEST` (`ID`, `SYSTEM_NAME`, `INTERFACE_NAME`, `REQUEST`, `ORDER_ID`, `SOURCE`) VALUES (?,?,?,?,?,?)</sql>
+                           <parameter expression="$ctx:TransactionId" type="CHAR"/>
+                           <parameter value="ReserveFunds" type="CHAR"/>
+                           <parameter value="UpdateBalance" type="CHAR"/>
+                           <parameter expression="$ctx:IN_PAYLOADRequest" type="CHAR"/>
+                           <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                           <parameter expression="$ctx:Responsecode" type="CHAR"/>
+                        </statement>
+                     </dbreport>
+                     <call>
+                        <endpoint name="IN_EP">
+                           <http format="rest"
+                                 method="POST"
+                                 uri-template="http://10.13.32.156:10010/Air">
+                              <timeout>
+                                 <duration>10000</duration>
+                                 <responseAction>fault</responseAction>
+                              </timeout>
+                              <suspendOnFailure>
+                                 <errorCodes>-1</errorCodes>
+                                 <initialDuration>0</initialDuration>
+                                 <progressionFactor>1.0</progressionFactor>
+                                 <maximumDuration>0</maximumDuration>
+                              </suspendOnFailure>
+                              <markForSuspension>
+                                 <errorCodes>-1</errorCodes>
+                              </markForSuspension>
+                           </http>
+                        </endpoint>
+                     </call>
+                     <enrich>
+                        <source type="body" clone="true"/>
+                        <target type="property" property="IN_PAYLOAD"/>
+                     </enrich>
+                     <log level="custom">
+                        <property name="AIN 2nd call"
+                                  value="************************************************************************"/>
+                     </log>
+                     <log level="full">
+                        <property name="AIN Response" value="*** Printing IN Response ***"/>
+                     </log>
+                     <property name="Responsecode"
+                               expression="$body//methodResponse/params/param/value/struct/member[name='responseCode']/value/i4"/>
+                     <dbreport description="">
+                        <connection>
+                           <pool>
+                              <dsName>jdbc/ottlog</dsName>
+                           </pool>
+                        </connection>
+                        <statement>
+                           <sql>INSERT INTO `LOG_RESPONSE` (`ID`, `SYSTEM_NAME`, `INTERFACE_NAME`, `RESPONSE`, `ORDER_ID`,`SOURCE`) VALUES (?,?,?,?,?,?)</sql>
+                           <parameter expression="$ctx:TransactionId" type="CHAR"/>
+                           <parameter value="ReserveFunds" type="CHAR"/>
+                           <parameter value="UpdateResponse" type="CHAR"/>
+                           <parameter expression="$ctx:IN_PAYLOAD" type="CHAR"/>
+                           <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                           <parameter expression="$ctx:Responsecode" type="CHAR"/>
+                        </statement>
+                     </dbreport>
+                     <filter xpath="$body//methodResponse/params/param/value/struct/member[name='responseCode']/value/i4 ='503'">
+                        <then>
+                           <property name="FORCE_ERROR_ON_SOAP_FAULT"
+                                     value="true"
+                                     scope="default"
+                                     type="STRING"/>
+                           <dbreport description="">
+                              <connection>
+                                 <pool>
+                                    <dsName>jdbc/ott</dsName>
+                                 </pool>
+                              </connection>
+                              <statement>
+                                 <sql>Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET  TRANSACTION_ID = ? , STATUS = 'KO' , CAUSE = 'SYSTEM_BUSY' ,`DESCRIPTION`='Exception at IN AIR-UCIP UpdateBalanceAndDate.' WHERE CORRELATION_ID= ? and INTERFACE_NAME= 'ReserveFunds'</sql>
+                                 <parameter expression="$ctx:TRANSACTION_ID" type="CHAR"/>
+                                 <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                              </statement>
+                           </dbreport>
+                           <payloadFactory media-type="xml">
+                              <format>
+                                 <ns:LogicalFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                  xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                                  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                                    <ns:CorrelationId>$1</ns:CorrelationId>
+                                    <ns:Cause>SYSTEM_BUSY</ns:Cause>
+                                    <ns:Message>Exception at IN AIR-UCIP UpdateBalanceAndDate.</ns:Message>
+                                    <ns:UserMessage>Exception at IN AIR-UCIP UpdateBalanceAndDate.</ns:UserMessage>
+                                 </ns:LogicalFault>
+                              </format>
+                              <args>
+                                 <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                              </args>
+                           </payloadFactory>
+                           <makefault version="soap11">
+                              <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                                    value="soap11Env:Server"/>
+                              <reason value="This is an operation implementation generated fault"/>
+                              <role/>
+                              <detail xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                      expression="$body/ns:LogicalFault"/>
+                           </makefault>
+                           <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                           <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                           <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                           <header name="To" action="remove"/>
+                           <respond/>
+                        </then>
+                     </filter>
+                     <filter xpath="$body//methodResponse/params/param/value/struct/member[name='responseCode']/value/i4 ='123'">
+                        <then>
+                           <property name="FORCE_ERROR_ON_SOAP_FAULT"
+                                     value="true"
+                                     scope="default"
+                                     type="STRING"/>
+                           <dbreport description="">
+                              <connection>
+                                 <pool>
+                                    <dsName>jdbc/ott</dsName>
+                                 </pool>
+                              </connection>
+                              <statement>
+                                 <sql>Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET  TRANSACTION_ID = ? , STATUS = 'KO' , CAUSE = 'CHARGE_EXCEEDS_LIMIT' ,`DESCRIPTION`='The total charge for the specific subscriber has exceeds his limit' WHERE CORRELATION_ID= ? and INTERFACE_NAME= 'ReserveFunds'</sql>
+                                 <parameter expression="$ctx:TransactionId" type="CHAR"/>
+                                 <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                              </statement>
+                           </dbreport>
+                           <payloadFactory media-type="xml">
+                              <format>
+                                 <ns:LogicalFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                  xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                                  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                                    <ns:CorrelationId>$1</ns:CorrelationId>
+                                    <ns:Cause>CHARGE_EXCEEDS_LIMIT</ns:Cause>
+                                    <ns:Message>The total charge for the specific subscriber has exceeds his limit.</ns:Message>
+                                    <ns:UserMessage>The total charge for the specific subscriber has exceeds his limit.</ns:UserMessage>
+                                 </ns:LogicalFault>
+                              </format>
+                              <args>
+                                 <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                              </args>
+                           </payloadFactory>
+                           <makefault version="soap11">
+                              <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                                    value="soap11Env:Server"/>
+                              <reason value="This is an operation implementation generated fault"/>
+                              <role/>
+                              <detail xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                      expression="$body/ns:LogicalFault"/>
+                           </makefault>
+                           <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                           <property name="HTTP_SC" value="500" scope="axis2"/>
+                           <property name="RESPONSE" value="true"/>
+                           <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                           <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                           <header name="To" action="remove"/>
+                           <respond/>
+                        </then>
+                     </filter>
+                     <filter xpath="$body//methodResponse/params/param/value/struct/member[name='responseCode']/value/i4 ='124'">
+                        <then>
+                           <property name="FORCE_ERROR_ON_SOAP_FAULT"
+                                     value="true"
+                                     scope="default"
+                                     type="STRING"/>
+                           <dbreport description="">
+                              <connection>
+                                 <pool>
+                                    <dsName>jdbc/ott</dsName>
+                                 </pool>
+                              </connection>
+                              <statement>
+                                 <sql>Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET  TRANSACTION_ID = ? , STATUS = 'KO' , CAUSE = 'INSUFFICIENT_FUNDS' ,`DESCRIPTION`="Subscriber doesn't have sufficient funds for this payment." WHERE CORRELATION_ID= ? and INTERFACE_NAME= 'ReserveFunds'</sql>
+                                 <parameter expression="$ctx:TRANSACTION_ID" type="CHAR"/>
+                                 <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                              </statement>
+                           </dbreport>
+                           <payloadFactory media-type="xml">
+                              <format>
+                                 <ns:LogicalFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                  xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                                  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                                    <ns:CorrelationId>$1</ns:CorrelationId>
+                                    <ns:Cause>INSUFFICIENT_FUNDS</ns:Cause>
+                                    <ns:Message>Subscriber doesn t have sufficient funds for this payment.</ns:Message>
+                                    <ns:UserMessage>Subscriber doesn t have sufficient funds for this payment.</ns:UserMessage>
+                                 </ns:LogicalFault>
+                              </format>
+                              <args>
+                                 <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                              </args>
+                           </payloadFactory>
+                           <makefault version="soap11">
+                              <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                                    value="soap11Env:Server"/>
+                              <reason value="This is an operation implementation generated fault"/>
+                              <role/>
+                              <detail xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                      expression="$body/ns:LogicalFault"/>
+                           </makefault>
+                           <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                           <property name="HTTP_SC" value="500" scope="axis2"/>
+                           <property name="RESPONSE" value="true"/>
+                           <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                           <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                           <header name="To" action="remove"/>
+                           <respond/>
+                        </then>
+                     </filter>
+                     <filter xpath="$body//methodResponse/params/param/value/struct/member[name='responseCode']/value/i4 ='0'">
+                        <then>
+                           <property name="FORCE_ERROR_ON_SOAP_FAULT"
+                                     value="true"
+                                     scope="default"
+                                     type="STRING"/>
+                           <dbreport description="">
+                              <connection>
+                                 <pool>
+                                    <dsName>jdbc/ott</dsName>
+                                 </pool>
+                              </connection>
+                              <statement>
+                                 <sql>Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET  TRANSACTION_ID = ? ,MSISDN =?,SUBSCRIBER_TYPE ='PREPAID' , STATUS = 'OK' , CAUSE = '' WHERE CORRELATION_ID= ? and INTERFACE_NAME= 'ReserveFunds'</sql>
+                                 <parameter expression="$ctx:TransactionId" type="CHAR"/>
+                                 <parameter expression="$ctx:msisdn" type="CHAR"/>
+                                 <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                              </statement>
+                           </dbreport>
+                        </then>
+                     </filter>
+                     <filter xpath="$body//methodResponse/params/param/value/struct/member[name='responseCode']/value/i4 !='0'">
+                        <then>
+                           <property name="FORCE_ERROR_ON_SOAP_FAULT"
+                                     value="true"
+                                     scope="default"
+                                     type="STRING"/>
+                           <dbreport description="">
+                              <connection>
+                                 <pool>
+                                    <dsName>jdbc/ott</dsName>
+                                 </pool>
+                              </connection>
+                              <statement>
+                                 <sql>Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET  TRANSACTION_ID = ? , STATUS = 'KO' , CAUSE = 'GENERAL_DECLINE' ,`DESCRIPTION`='GENERAL_DECLINE' WHERE CORRELATION_ID= ? and INTERFACE_NAME= 'ReserveFunds'</sql>
+                                 <parameter expression="$ctx:TransactionId" type="CHAR"/>
+                                 <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                              </statement>
+                           </dbreport>
+                           <payloadFactory media-type="xml">
+                              <format>
+                                 <ns:LogicalFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                  xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                                  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                                    <ns:CorrelationId>$1</ns:CorrelationId>
+                                    <ns:Cause>GENERAL_DECLINE</ns:Cause>
+                                    <ns:Message>GENERAL_DECLINE.</ns:Message>
+                                    <ns:UserMessage>GENERAL_DECLINE.</ns:UserMessage>
+                                 </ns:LogicalFault>
+                              </format>
+                              <args>
+                                 <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                              </args>
+                           </payloadFactory>
+                           <makefault version="soap11">
+                              <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                                    value="soap11Env:Server"/>
+                              <reason value="This is an operation implementation generated fault"/>
+                              <role/>
+                              <detail xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                      expression="$body/ns:LogicalFault"/>
+                           </makefault>
+                           <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                           <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                           <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                           <header name="To" action="remove"/>
+                           <respond/>
+                        </then>
+                     </filter>
+                     <payloadFactory media-type="xml">
+                        <format>
+                           <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">
+                              <SOAP-ENV:Body>
+                                 <ns0:ReserveFundsResponse xmlns:ns0="urn:vimpelcom:carrier-billing-hub:types">
+                                    <ns0:CorrelationId>$1</ns0:CorrelationId>
+                                    <ns0:TransactionId>$2</ns0:TransactionId>
+                                    <ns0:Message>SUCCESS</ns0:Message>
+                                 </ns0:ReserveFundsResponse>
+                              </SOAP-ENV:Body>
+                           </SOAP-ENV:Envelope>
+                        </format>
+                        <args>
+                           <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                           <arg evaluator="xml" expression="$ctx:TransactionId"/>
+                        </args>
+                     </payloadFactory>
+                     <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                     <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                     <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                     <header name="To" action="remove"/>
+                     <respond/>
+                  </case>
+                  <default/>
+               </switch>
+            </case>
+            <case regex="ReleaseFundsMessage">
+               <property xmlns:xsd="urn:vimpelcom:carrier-billing-hub:types"
+                         xmlns:ns="http://org.apache.synapse/xsd"
+                         name="CorrelationID"
+                         expression="//xsd:CorrelationId"/>
+               <property xmlns:tns="urn:vimpelcom:carrier-billing-hub:types"
+                         xmlns:ns="http://org.apache.synapse/xsd"
+                         name="PartnerId"
+                         expression="//tns:PartnerId"/>
+               <call>
+                  <endpoint>
+                     <http method="GET" uri-template="http://10.50.13.134:8282/generateId"/>
+                  </endpoint>
+               </call>
+               <property name="MessageType" value="application/xml"/>
+               <property xmlns:ns="http://org.apache.synapse/xsd"
+                         name="TransactionId"
+                         expression="//soapenv:Body/transaction"/>
+               <property name="INTERFACE_NAME" value="ReleaseFunds"/>
+               <filter source="get-property('PartnerId')" regex="google">
+                  <then>
+                     <dblookup>
+                        <connection>
+                           <pool>
+                              <dsName>jdbc/ott</dsName>
+                           </pool>
+                        </connection>
+                        <statement>
+                           <sql>select Status  from OTTHub_Wso2.HUB_TRANSACTION_STORE  WHERE CORRELATION_ID = ? AND INTERFACE_NAME= 'ReleaseFunds' ORDER BY TIMEIN DESC LIMIT 1 </sql>
+                           <parameter expression="get-property('CorrelationID')" type="VARCHAR"/>
+                           <result name="ReserveFunds" column="STATUS"/>
+                        </statement>
+                        <statement>
+                           <sql>select CAUSE from OTTHub_Wso2.HUB_TRANSACTION_STORE  WHERE CORRELATION_ID = ? AND INTERFACE_NAME= 'ReleaseFunds' ORDER BY TIMEIN DESC LIMIT 1 </sql>
+                           <parameter expression="get-property('CorrelationID')" type="VARCHAR"/>
+                           <result name="CAUSE" column="CAUSE"/>
+                        </statement>
+                     </dblookup>
+                     <property name="STATUS" expression="get-property('ReserveFunds')"/>
+                     <property name="CAUSE" expression="get-property('CAUSE')"/>
+                     <log level="custom">
+                        <property name="******************STATUS**************88"
+                                  expression="get-property('ReserveFunds')"/>
+                        <property name="**************************CAUSE****************"
+                                  expression="get-property('CAUSE')"/>
+                     </log>
+                     <filter source="get-property('STATUS')" regex="KO">
+                        <then>
+                           <filter source="get-property('CAUSE')" regex="INVALID_DATA">
+                              <then>
+                                 <payloadFactory media-type="xml">
+                                    <format>
+                                       <ns:MisbehaviorFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                            xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                                            xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                                            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                                          <ns:CorrelationId>$1</ns:CorrelationId>
+                                          <ns:Cause>INVALID_DATA</ns:Cause>
+                                          <ns:Message>Requested PARTNERID cannot be handled.</ns:Message>
+                                          <ns:UserMessage>Request cannot be handled.</ns:UserMessage>
+                                       </ns:MisbehaviorFault>
+                                    </format>
+                                    <args>
+                                       <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                                    </args>
+                                 </payloadFactory>
+                                 <makefault version="soap11">
+                                    <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                                          value="soap11Env:Server"/>
+                                    <reason value="This is an operation implementation generated fault"/>
+                                    <role/>
+                                    <detail xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                            expression="$body/ns:MisbehaviorFault"/>
+                                 </makefault>
+                                 <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                                 <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                                 <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                                 <header name="To" action="remove"/>
+                                 <respond/>
+                              </then>
+                              <else>
+                                 <clone>
+                                    <target sequence="ReleaseFund"/>
+                                    <target sequence="ReleaseFundResponse"/>
+                                 </clone>
+                              </else>
+                           </filter>
+                        </then>
+                        <else>
+                           <clone>
+                              <target sequence="ReleaseFund"/>
+                              <target sequence="ReleaseFundResponse"/>
+                           </clone>
+                        </else>
+                     </filter>
+                  </then>
+                  <else>
+                     <property name="STATUS" value="KO"/>
+                     <property name="CAUSE" value="INVALID_DATA"/>
+                     <log level="custom">
+                        <property name="########################" value="##########################"/>
+                     </log>
+                     <dbreport>
+                        <connection>
+                           <pool>
+                              <dsName>jdbc/ott</dsName>
+                           </pool>
+                        </connection>
+                        <statement>
+                           <sql>INSERT INTO OTTHub_Wso2.HUB_TRANSACTION_STORE (CORRELATION_ID, TRANSACTION_ID, INTERFACE_NAME, STATUS, TIMEIN, CAUSE) VALUES (?,?,?,?,NOW(),?)</sql>
+                           <parameter xmlns:ns="http://org.apache.synapse/xsd"
+                                      expression="get-property('CorrelationID')"
+                                      type="VARCHAR"/>
+                           <parameter xmlns:ns="http://org.apache.synapse/xsd"
+                                      expression="get-property('TransactionId')"
+                                      type="VARCHAR"/>
+                           <parameter xmlns:ns="http://org.apache.synapse/xsd"
+                                      expression="get-property('INTERFACE_NAME')"
+                                      type="VARCHAR"/>
+                           <parameter xmlns:ns="http://org.apache.synapse/xsd"
+                                      expression="get-property('STATUS')"
+                                      type="VARCHAR"/>
+                           <parameter xmlns:ns="http://org.apache.synapse/xsd"
+                                      expression="get-property('CAUSE')"
+                                      type="VARCHAR"/>
+                        </statement>
+                     </dbreport>
+                     <property name="FORCE_ERROR_ON_SOAP_FAULT"
+                               value="true"
+                               scope="default"
+                               type="STRING"/>
+                     <dbreport description="">
+                        <connection>
+                           <pool>
+                              <dsName>jdbc/ott</dsName>
+                           </pool>
+                        </connection>
+                        <statement>
+                           <sql>Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET  TRANSACTION_ID = ? , STATUS = 'KO' , CAUSE = 'INVALID_CURRENCY' ,`DESCRIPTION`='Requested currency cannot be handled.' WHERE CORRELATION_ID= ? and INTERFACE_NAME= 'ReserveFunds'</sql>
+                           <parameter expression="$ctx:TRANSACTION_ID" type="CHAR"/>
+                           <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                        </statement>
+                     </dbreport>
+                     <payloadFactory media-type="xml">
+                        <format>
+                           <ns:MisbehaviorFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                                xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                              <ns:CorrelationId>$1</ns:CorrelationId>
+                              <ns:Cause>INVALID_DATA</ns:Cause>
+                              <ns:Message>Request cannot be handled.</ns:Message>
+                              <ns:UserMessage>Request cannot be handled.</ns:UserMessage>
+                           </ns:MisbehaviorFault>
+                        </format>
+                        <args>
+                           <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                        </args>
+                     </payloadFactory>
+                     <makefault version="soap11">
+                        <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                              value="soap11Env:Server"/>
+                        <reason value="This is an operation implementation generated fault"/>
+                        <role/>
+                        <detail xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                expression="$body/ns:MisbehaviorFault"/>
+                     </makefault>
+                     <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                     <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                     <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                     <header name="To" action="remove"/>
+                     <respond/>
+                     <log level="custom">
+                        <property name="########################" value="##########################"/>
+                     </log>
+                  </else>
+               </filter>
+            </case>
+            <case regex="RefundSubscriberMessage">
+               <property xmlns:xsd="urn:vimpelcom:carrier-billing-hub:types"
+                         xmlns:ns="http://org.apache.synapse/xsd"
+                         name="CorrelationID"
+                         expression="//xsd:CorrelationId"/>
+               <property xmlns:tns="urn:vimpelcom:carrier-billing-hub:types"
+                         xmlns:ns="http://org.apache.synapse/xsd"
+                         name="PartnerId"
+                         expression="//tns:PartnerId"/>
+               <call>
+                  <endpoint>
+                     <http method="GET" uri-template="http://10.50.13.134:8282/generateId"/>
+                  </endpoint>
+               </call>
+               <property name="MessageType" value="application/xml"/>
+               <property xmlns:ns="http://org.apache.synapse/xsd"
+                         name="TransactionId"
+                         expression="//soapenv:Body/transaction"/>
+               <property name="INTERFACE_NAME" value="RefundSubscriber"/>
+               <filter source="get-property('PartnerId')" regex="google">
+                  <then>
+                     <dblookup>
+                        <connection>
+                           <pool>
+                              <dsName>jdbc/ott</dsName>
+                           </pool>
+                        </connection>
+                        <statement>
+                           <sql>select Status  from OTTHub_Wso2.HUB_TRANSACTION_STORE  WHERE CORRELATION_ID = ? AND INTERFACE_NAME= 'RefundSubscriber' ORDER BY TIMEIN DESC LIMIT 1 </sql>
+                           <parameter expression="get-property('CorrelationID')" type="VARCHAR"/>
+                           <result name="RefundSubscriber" column="STATUS"/>
+                        </statement>
+                        <statement>
+                           <sql>select CAUSE from OTTHub_Wso2.HUB_TRANSACTION_STORE  WHERE CORRELATION_ID = ? AND INTERFACE_NAME= 'RefundSubscriber' ORDER BY TIMEIN DESC LIMIT 1 </sql>
+                           <parameter expression="get-property('CorrelationID')" type="VARCHAR"/>
+                           <result name="CAUSE" column="CAUSE"/>
+                        </statement>
+                     </dblookup>
+                     <property name="STATUS" expression="get-property('RefundSubscriber')"/>
+                     <property name="CAUSE" expression="get-property('CAUSE')"/>
+                     <log level="custom">
+                        <property name="******************STATUS**************88"
+                                  expression="get-property('RefundSubscriber')"/>
+                        <property name="**************************CAUSE****************"
+                                  expression="get-property('CAUSE')"/>
+                     </log>
+                     <filter source="get-property('STATUS')" regex="KO">
+                        <then>
+                           <filter source="get-property('CAUSE')" regex="INVALID_DATA">
+                              <then>
+                                 <payloadFactory media-type="xml">
+                                    <format>
+                                       <ns:MisbehaviorFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                            xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                                            xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                                            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                                          <ns:CorrelationId>$1</ns:CorrelationId>
+                                          <ns:Cause>INVALID_DATA</ns:Cause>
+                                          <ns:Message>Requested PARTNERID cannot be handled.</ns:Message>
+                                          <ns:UserMessage>Request cannot be handled.</ns:UserMessage>
+                                       </ns:MisbehaviorFault>
+                                    </format>
+                                    <args>
+                                       <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                                    </args>
+                                 </payloadFactory>
+                                 <makefault version="soap11">
+                                    <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                                          value="soap11Env:Server"/>
+                                    <reason value="This is an operation implementation generated fault"/>
+                                    <role/>
+                                    <detail xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                            expression="$body/ns:MisbehaviorFault"/>
+                                 </makefault>
+                                 <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                                 <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                                 <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                                 <header name="To" action="remove"/>
+                                 <respond/>
+                              </then>
+                              <else>
+                                 <clone>
+                                    <target sequence="RefundSubscriber"/>
+                                    <target sequence="RefundSubscriberResponse"/>
+                                 </clone>
+                              </else>
+                           </filter>
+                        </then>
+                        <else>
+                           <clone>
+                              <target sequence="RefundSubscriber"/>
+                              <target sequence="RefundSubscriberResponse"/>
+                           </clone>
+                        </else>
+                     </filter>
+                  </then>
+                  <else>
+                     <property name="STATUS" value="KO"/>
+                     <property name="CAUSE" value="INVALID_DATA"/>
+                     <log level="custom">
+                        <property name="########################" value="##########################"/>
+                     </log>
+                     <dbreport>
+                        <connection>
+                           <pool>
+                              <dsName>jdbc/ott</dsName>
+                           </pool>
+                        </connection>
+                        <statement>
+                           <sql>INSERT INTO OTTHub_Wso2.HUB_TRANSACTION_STORE (CORRELATION_ID, TRANSACTION_ID, INTERFACE_NAME, STATUS, TIMEIN, CAUSE) VALUES (?,?,?,?,NOW(),?)</sql>
+                           <parameter xmlns:ns="http://org.apache.synapse/xsd"
+                                      expression="get-property('CorrelationID')"
+                                      type="VARCHAR"/>
+                           <parameter xmlns:ns="http://org.apache.synapse/xsd"
+                                      expression="get-property('TransactionId')"
+                                      type="VARCHAR"/>
+                           <parameter xmlns:ns="http://org.apache.synapse/xsd"
+                                      expression="get-property('INTERFACE_NAME')"
+                                      type="VARCHAR"/>
+                           <parameter xmlns:ns="http://org.apache.synapse/xsd"
+                                      expression="get-property('STATUS')"
+                                      type="VARCHAR"/>
+                           <parameter xmlns:ns="http://org.apache.synapse/xsd"
+                                      expression="get-property('CAUSE')"
+                                      type="VARCHAR"/>
+                        </statement>
+                     </dbreport>
+                     <property name="FORCE_ERROR_ON_SOAP_FAULT"
+                               value="true"
+                               scope="default"
+                               type="STRING"/>
+                     <dbreport description="">
+                        <connection>
+                           <pool>
+                              <dsName>jdbc/ott</dsName>
+                           </pool>
+                        </connection>
+                        <statement>
+                           <sql>Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET  TRANSACTION_ID = ? , STATUS = 'KO' , CAUSE = 'INVALID_CURRENCY' ,`DESCRIPTION`='Requested currency cannot be handled.' WHERE CORRELATION_ID= ? and INTERFACE_NAME= 'RefundSubscriber'</sql>
+                           <parameter expression="$ctx:TRANSACTION_ID" type="CHAR"/>
+                           <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                        </statement>
+                     </dbreport>
+                     <payloadFactory media-type="xml">
+                        <format>
+                           <ns:MisbehaviorFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                                xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                                                xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                                                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                              <ns:CorrelationId>$1</ns:CorrelationId>
+                              <ns:Cause>INVALID_DATA</ns:Cause>
+                              <ns:Message>Request cannot be handled.</ns:Message>
+                              <ns:UserMessage>Request cannot be handled.</ns:UserMessage>
+                           </ns:MisbehaviorFault>
+                        </format>
+                        <args>
+                           <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+                        </args>
+                     </payloadFactory>
+                     <makefault version="soap11">
+                        <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                              value="soap11Env:Server"/>
+                        <reason value="This is an operation implementation generated fault"/>
+                        <role/>
+                        <detail xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                                expression="$body/ns:MisbehaviorFault"/>
+                     </makefault>
+                     <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                     <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                     <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                     <header name="To" action="remove"/>
+                     <respond/>
+                     <log level="custom">
+                        <property name="########################" value="##########################"/>
+                     </log>
+                  </else>
+               </filter>
+            </case>
+            <default/>
+         </switch>
+      </inSequence>
+   </target>
+   <publishWSDL key="conf:/repository/esb/OperatingCompanyInteraction-service0.wsdl"/>
+</proxy>

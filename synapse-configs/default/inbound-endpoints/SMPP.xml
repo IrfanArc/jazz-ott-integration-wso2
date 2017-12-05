@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inboundEndpoint xmlns="http://ws.apache.org/ns/synapse"
+                 name="SMPP"
+                 sequence="SMPPSequence"
+                 onError="fault"
+                 class="org.wso2.carbon.inbound.smpp.SMPPListeningConsumer"
+                 suspend="false">
+   <parameters>
+      <parameter name="inbound.behavior">eventBased</parameter>
+      <parameter name="sequential">true</parameter>
+      <parameter name="coordination">true</parameter>
+      <parameter name="addressTon">UNKNOWN</parameter>
+      <parameter name="systemId">ARCANA_DCB</parameter>
+      <parameter name="password">Arcana@1</parameter>
+      <parameter name="port">15019</parameter>
+      <parameter name="host">10.227.16.68</parameter>
+      <parameter name="systemType">CPT</parameter>
+      <parameter name="bindType">BIND_TRX</parameter>
+      <parameter name="addressNpi">UNKNOWN</parameter>
+   </parameters>
+</inboundEndpoint>

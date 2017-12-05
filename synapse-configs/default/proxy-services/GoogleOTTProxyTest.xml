@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<proxy xmlns="http://ws.apache.org/ns/synapse"
+       name="GoogleOTTProxyTest"
+       startOnLoad="true"
+       statistics="disable"
+       trace="disable"
+       transports="http">
+   <target>
+      <outSequence>
+         <send/>
+      </outSequence>
+      <endpoint>
+         <wsdl port="OperatingCompanyInterfaceV4Endpoint0"
+               service="OperatingCompanyInteraction-service0"
+               uri="http://localhost:8281/services/OperatingCompanyInteraction-service0?wsdl"/>
+      </endpoint>
+   </target>
+   <publishWSDL uri="http://localhost:8281/services/OperatingCompanyInteraction-service0?wsdl"/>
+   <description/>
+</proxy>
+                                

@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<api xmlns="http://ws.apache.org/ns/synapse"
+     name="GoogleOTT"
+     context="/googleott">
+   <resource methods="POST" uri-template="/conveyrequest">
+      <inSequence>
+         <log level="full">
+            <property name="INIT" value="[Convey Request Process Initiated]"/>
+            <property name="CorrelationID" expression="//sms/id"/>
+            <property name="MSISDN" expression="//sms/sourceAddress"/>
+            <property name="SMSText" expression="//sms/text"/>
+         </log>
+         <property name="TRANSACTION_ID"
+                   expression="fn:substring-after(get-property('MessageID'),'urn:uuid:')"/>
+         <property name="CorrelationID" expression="//sms/id"/>
+         <property name="MSISDN" expression="//sms/sourceAddress"/>
+         <property name="SMSText" expression="//sms/text"/>
+         <dbreport>
+            <connection>
+               <pool>
+                  <dsName>jdbc/ott</dsName>
+               </pool>
+            </connection>
+            <statement>
+               <sql>INSERT into OTTHub_Wso2.HUB_TRANSACTION_STORE (CORRELATION_ID,TRANSACTION_ID,STATUS,INTERFACE_NAME,TIMEIN,DESCRIPTION,MSISDN) VALUES (?,?,?,?,NOW(),?,?)</sql>
+               <parameter expression="get-property('CorrelationID')" type="VARCHAR"/>
+               <parameter expression="get-property('TRANSACTION_ID')" type="VARCHAR"/>
+               <parameter value="PENDING" type="VARCHAR"/>
+               <parameter value="ConveyRequest" type="VARCHAR"/>
+               <parameter expression="$ctx:SMSText" type="VARCHAR"/>
+               <parameter expression="$ctx:MSISDN" type="VARCHAR"/>
+            </statement>
+         </dbreport>
+         <log level="custom">
+            <property name="CreateTX" value="Create TX Ended"/>
+         </log>
+         <payloadFactory media-type="xml">
+            <format>
+               <soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope"
+                              xmlns:ins="http://soa.comptel.com/2011/02/instantlink">
+                  <soap:Header/>
+                  <soap:Body>
+                     <ins:DisplayRequest>
+                        <ins:RequestHeader>
+                           <ins:NeType>BST</ins:NeType>
+                           <ins:OrderNo>$2</ins:OrderNo>
+                           <ins:Priority>5</ins:Priority>
+                           <ins:ReqUser>bss</ins:ReqUser>
+                           <ins:RetransmissionFlag>false</ins:RetransmissionFlag>
+                           <ins:BypassLock>false</ins:BypassLock>
+                        </ins:RequestHeader>
+                        <ins:RequestParameters>
+                           <ins:Parameter name="MSISDN" value="$1"/>
+                           <ins:Parameter name="NE_TYPE" value="BST"/>
+                           <ins:Parameter name="REQ_OBJ" value="1"/>
+                           <ins:Parameter name="REQ_TYPE" value="4"/>
+                        </ins:RequestParameters>
+                     </ins:DisplayRequest>
+                  </soap:Body>
+               </soap:Envelope>
+            </format>
+            <args>
+               <arg evaluator="xml" expression="get-property('MSISDN')"/>
+               <arg evaluator="xml" expression="get-property('CorrelationID')"/>
+            </args>
+         </payloadFactory>
+         <log level="full">
+            <property name="-----------COMPTEL REQUEST-----------"
+                      value="---------------------"/>
+         </log>
+         <call>
+            <endpoint name="ComptelEP">
+               <address uri="http://10.50.6.250:22006/ilws/InstantLinkSOA" format="soap12">
+                  <timeout>
+                     <duration>10000</duration>
+                     <responseAction>fault</responseAction>
+                  </timeout>
+                  <suspendOnFailure>
+                     <errorCodes>-1</errorCodes>
+                     <initialDuration>0</initialDuration>
+                     <progressionFactor>1.0</progressionFactor>
+                     <maximumDuration>0</maximumDuration>
+                  </suspendOnFailure>
+                  <markForSuspension>
+                     <errorCodes>-1</errorCodes>
+                  </markForSuspension>
+               </address>
+            </endpoint>
+         </call>
+         <log level="full">
+            <property name="-----------COMPTEL RESPONSE-----------"
+                      value="---------------------"/>
+         </log>
+         <log level="custom">
+            <property name="After Comptel Call"
+                      value="Called the comptel ep and got the response"/>
+            <property xmlns:S="http://www.w3.org/2003/05/soap-envelope"
+                      xmlns:env="http://www.w3.org/2003/05/soap-envelope"
+                      xmlns:ns="http://soa.comptel.com/2011/02/instantlink"
+                      name="STATUSCODE"
+                      expression="//ns:Response/ns:ResponseHeader/ns:Status"/>
+            <property xmlns:ns="http://soa.comptel.com/2011/02/instantlink"
+                      name="COMPTEL_IMSI"
+                      expression="//ns:Response/ns:ResponseParameters/ns:Parameter[@name='IMSI1']/@value"/>
+         </log>
+         <property xmlns:S="http://www.w3.org/2003/05/soap-envelope"
+                   xmlns:env="http://www.w3.org/2003/05/soap-envelope"
+                   xmlns:ns="http://soa.comptel.com/2011/02/instantlink"
+                   name="STATUSCODE"
+                   expression="//ns:Response/ns:ResponseHeader/ns:Status"
+                   scope="default"
+                   type="STRING"/>
+         <property xmlns:ns="http://soa.comptel.com/2011/02/instantlink"
+                   name="COMPTEL_IMSI"
+                   expression="//ns:Response/ns:ResponseParameters/ns:Parameter[@name='IMSI1']/@value"
+                   scope="default"
+                   type="STRING"/>
+         <filter source="get-property('STATUSCODE')" regex="9">
+            <then>
+               <log level="custom">
+                  <property name="Comptel Status is" value="OK"/>
+               </log>
+               <payloadFactory media-type="xml">
+                  <format>
+                     <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                                       xmlns:urn="urn:vimpelcom:carrier-billing-hub:types">
+                        <soapenv:Header/>
+                        <soapenv:Body>
+                           <urn:ConveyRequest>
+                              <urn:CorrelationId>$1</urn:CorrelationId>
+                              <urn:PartnerId>google</urn:PartnerId>
+                              <urn:ServiceId>google.play</urn:ServiceId>
+                              <urn:RequestType>association</urn:RequestType>
+                              <urn:Channel>sms</urn:Channel>
+                              <urn:IMSI>$2</urn:IMSI>
+                              <urn:Data>$3</urn:Data>
+                           </urn:ConveyRequest>
+                        </soapenv:Body>
+                     </soapenv:Envelope>
+                  </format>
+                  <args>
+                     <arg evaluator="xml" expression="get-property('CorrelationID')"/>
+                     <arg evaluator="xml" expression="get-property('COMPTEL_IMSI')"/>
+                     <arg evaluator="xml" expression="get-property('SMSText')"/>
+                  </args>
+               </payloadFactory>
+               <log level="full"/>
+               <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+               <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+               <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+               <header name="To" action="remove"/>
+               <property name="Action"
+                         value="urn:vimpelcom:carrier-billing-hub:opco-interaction:soap:convey-request"
+                         scope="transport"/>
+               <call>
+                  <endpoint>
+                     <address uri="http://10.50.13.129:8282/GDCBCallback" format="soap11"/>
+                  </endpoint>
+               </call>
+               <log level="full">
+                  <property name="HUB_CALL" value="Hub call successful"/>
+               </log>
+               <dbreport description="">
+                  <connection>
+                     <pool>
+                        <dsName>jdbc/ott</dsName>
+                     </pool>
+                  </connection>
+                  <statement>
+                     <sql>        Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET TRANSACTION_ID=?,STATUS='OK' WHERE CORRELATION_ID= ? and INTERFACE_NAME='ConveyRequest'       </sql>
+                     <parameter expression="get-property('TRANSACTION_ID')" type="VARCHAR"/>
+                     <parameter expression="get-property('CorrelationID')" type="VARCHAR"/>
+                  </statement>
+               </dbreport>
+               <property name="NO_ENTITY_BODY" value="true" scope="axis2" type="BOOLEAN"/>
+               <respond/>
+            </then>
+            <else>
+               <log level="custom">
+                  <property name="Comptel Status is" value="KO"/>
+               </log>
+               <dbreport description="">
+                  <connection>
+                     <pool>
+                        <dsName>jdbc/ott</dsName>
+                     </pool>
+                  </connection>
+                  <statement>
+                     <sql>        Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET TRANSACTION_ID=?,STATUS='KO' WHERE CORRELATION_ID= ? and INTERFACE_NAME='ConveyRequest'       </sql>
+                     <parameter expression="get-property('TRANSACTION_ID')" type="VARCHAR"/>
+                     <parameter expression="get-property('CorrelationID')" type="VARCHAR"/>
+                  </statement>
+               </dbreport>
+               <property name="NO_ENTITY_BODY" value="true" scope="axis2" type="BOOLEAN"/>
+               <respond/>
+            </else>
+         </filter>
+      </inSequence>
+   </resource>
+</api>

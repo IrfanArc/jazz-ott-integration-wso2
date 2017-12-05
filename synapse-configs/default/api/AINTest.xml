@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<api xmlns="http://ws.apache.org/ns/synapse"
+     name="AINTest"
+     context="/intest">
+   <resource methods="POST" uri-template="/{msisdn}">
+      <inSequence>
+         <property name="msisdn" expression="get-property('uri.var.msisdn')"/>
+         <property name="msisdn2" expression="get-property('uri.var.msisdn')"/>
+         <property name="NORMALIZED_MSISDN_FOR_IN"
+                   expression="fn:substring(get-property('msisdn'),3)"
+                   scope="default"
+                   type="STRING"
+                   description="NORMALIZED_MSISDN_FOR_IN"/>
+         <payloadFactory media-type="xml">
+            <format key="conf:repository/esb/INreq"/>
+            <args>
+               <arg evaluator="xml" expression="$ctx:NORMALIZED_MSISDN_FOR_IN"/>
+               <arg value="283883"/>
+            </args>
+         </payloadFactory>
+         <log level="full">
+            <property name="init" value="Calling IN GetBalanceAndDate"/>
+            <property name="NORMALIZED MSISDN" expression="$ctx:NORMALIZED_MSISDN_FOR_IN"/>
+         </log>
+         <header name="User-Agent" scope="transport" value="UGw Server/4.3/1.0"/>
+         <header name="Authorization"
+                 scope="transport"
+                 value="Basic ZmRzdXNlcjpFcmljc3NvbiE="/>
+         <property name="messageType" value="text/xml" scope="axis2"/>
+         <property name="DISABLE_CHUNKING" value="true" scope="axis2"/>
+         <call>
+            <endpoint name="IN_EP">
+               <http format="rest"
+                     method="POST"
+                     uri-template="http://10.13.32.214:10010/Air">
+                  <timeout>
+                     <duration>10000</duration>
+                     <responseAction>fault</responseAction>
+                  </timeout>
+                  <suspendOnFailure>
+                     <errorCodes>-1</errorCodes>
+                     <initialDuration>0</initialDuration>
+                     <progressionFactor>1.0</progressionFactor>
+                     <maximumDuration>0</maximumDuration>
+                  </suspendOnFailure>
+                  <markForSuspension>
+                     <errorCodes>-1</errorCodes>
+                  </markForSuspension>
+               </http>
+            </endpoint>
+         </call>
+         <property xmlns:ns0="http://services.samples/xsd"
+                   name="member"
+                   expression="$body/methodResponse/params/param/value/struct/member[name='offerInformationList']/name/text()"/>
+         <log level="custom">
+            <property xmlns:ns0="http://services.samples/xsd"
+                      name="member"
+                      expression="$body/methodResponse/params/param/value/struct/member/name/text()"/>
+         </log>
+         <filter source="$ctx:member" regex="offerInformationList">
+            <then>
+               <property xmlns:ns0="http://services.samples/xsd"
+                         name="data"
+                         expression="$body/methodResponse/params/param/value/struct/member[name='offerInformationList']/value/array/data/value/struct/member[name='offerID']/value/i4/text()"/>
+            </then>
+            <else>
+               <property xmlns:ns0="http://services.samples/xsd"
+                         name="data"
+                         expression="$body/methodResponse/params/param/value/struct/member[name='responseCode']/value/i4/text()"/>
+            </else>
+         </filter>
+         <log level="full">
+            <property name="ComptelResponse" value="*** Printing IN Response ***"/>
+            <property name="Data" expression="$ctx:data"/>
+         </log>
+         <respond/>
+      </inSequence>
+   </resource>
+</api>

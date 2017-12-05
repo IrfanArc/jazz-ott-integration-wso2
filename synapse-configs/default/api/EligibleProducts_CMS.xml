@@ -1,0 +1,1324 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<api xmlns="http://ws.apache.org/ns/synapse"
+     name="EligibleProducts_CMS"
+     context="/subscribers">
+   <resource methods="GET"
+             uri-template="/{subscriberId}/subscriptions/{subscriptionId}/offers/{+offers}">
+      <inSequence>
+         <log level="custom" description="INIT_LOG">
+            <property name="[1.INIT]" value="[Offer] RequestReceived"/>
+            <property name="[1a. Request Param1]"
+                      expression="fn:concat('SubscriberID:',get-property('uri.var.subscriberId'))"/>
+            <property name="[1b. Request Param]"
+                      expression="fn:concat('SubscriptionID: ', get-property('uri.var.subscriptionId'))"/>
+            <property name="[OfferID]"
+                      expression="fn:concat('OFFERID:',get-property('uri.var.offers'))"/>
+         </log>
+         <property name="OFFER" expression="get-property('uri.var.offers')"/>
+         <property name="TRANSACTION_ID"
+                   expression="fn:substring-after(get-property('MessageID'),'urn:uuid:')"
+                   scope="default"
+                   type="STRING"
+                   description="TransactionID"/>
+         <!-- Log the incoming request in DB --><property name="RESOURCE_URI" expression="get-property('To')"/>
+         <property name="accesstokenheader"
+                   expression="get-property('transport', 'Authorization')"
+                   scope="default"
+                   type="STRING"/>
+         <property name="API_NAME" value="Subscribers"/>
+         <property name="INTERFACE_NAME" value="OfferDetails"/>
+         <property name="REQ_MSISDN" expression="get-property('uri.var.subscriberId')"/>
+         <enrich>
+            <source type="body" clone="true"/>
+            <target type="property" property="LOG_REQUEST"/>
+         </enrich>
+         <sequence name="LOG_REQUEST_SEQUENCE" statistics="enable" trace="enable">
+            <dbreport>
+               <connection>
+                  <pool>
+                     <dsName>jdbc/ApimLoggingDS</dsName>
+                  </pool>
+               </connection>
+               <statement>
+                  <sql>INSERT INTO veon.apim_log_request(transactionId, apiName, interfaceName, request, msisdn, resourceURI,authorization)  values (?, ?, ?, ?, ?, ?, ?)</sql>
+                  <parameter expression="get-property('TRANSACTION_ID')" type="VARCHAR"/>
+                  <parameter expression="get-property('API_NAME')" type="VARCHAR"/>
+                  <parameter expression="get-property('INTERFACE_NAME')" type="VARCHAR"/>
+                  <parameter expression="get-property('LOG_REQUEST')" type="VARCHAR"/>
+                  <parameter expression="get-property('REQ_MSISDN')" type="VARCHAR"/>
+                  <parameter expression="get-property('RESOURCE_URI')" type="VARCHAR"/>
+                  <parameter expression="get-property('accesstokenheader')" type="VARCHAR"/>
+               </statement>
+            </dbreport>
+         </sequence>
+         <!-- Log request ends --><enrich>
+            <source type="body" clone="true"/>
+            <target type="property" property="ORGINAL_PAYLOAD"/>
+         </enrich>
+         <property name="accesstokenheader"
+                   expression="get-property('transport', 'Authorization')"
+                   scope="default"
+                   type="STRING"/>
+         <property name="uri.var.MSISDN"
+                   expression="get-property('uri.var.subscriberId')"
+                   scope="default"
+                   type="STRING"/>
+         <property name="accessToken"
+                   expression="fn:substring-after(get-property('accesstokenheader'),'Bearer ')"
+                   scope="default"
+                   type="STRING"/>
+         <property name="BearerValue"
+                   expression="fn:substring-before(get-property('accesstokenheader'),' ')='Bearer'"
+                   scope="default"
+                   type="STRING"/>
+         <filter source="boolean(get-property('accesstokenheader')) and boolean(get-property('accessToken')) and boolean(get-property('BearerValue'))  "
+                 regex="false">
+            <then>
+               <log level="custom" description="TOKEN_CHECK">
+                  <property name="[1a.TOKEN CHECK]"
+                            value="[EffectiveServices] AUTHORIZATION HEADER MISSING OR INVALID FORMAT"/>
+               </log>
+               <property name="messageType"
+                         value="application/json"
+                         scope="axis2"
+                         type="STRING"/>
+               <payloadFactory media-type="json" description="ResponseMsg">
+                  <format>
+    {&#xD;
+        "errorId": "ESE-403",&#xD;
+        "code": "FORBIDDEN",&#xD;
+        "message": "User access token invalid."&#xD;
+    }&#xD;
+</format>
+                  <args/>
+               </payloadFactory>
+               <log level="full"/>
+               <property name="HTTP_SC" value="403" scope="axis2" type="STRING"/>
+               <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+               <header name="To" scope="default" expression="get-property('ReplyTo')"/>
+               <property name="messageType"
+                         value="application/json"
+                         scope="axis2"
+                         type="STRING"/>
+               <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+               <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+               <header name="To" scope="default" action="remove"/>
+               <!-- Log the API Response here --><property name="JSON_RESPONSE" expression="json-eval($.)"/>
+               <property name="API_NAME" value="Subscribers"/>
+               <property name="INTERFACE_NAME" value="OfferDetails"/>
+               <sequence name="LOG_RESPONSE_SEQUENCE" statistics="enable" trace="enable">
+                  <dbreport>
+                     <connection>
+                        <pool>
+                           <dsName>jdbc/ApimLoggingDS</dsName>
+                        </pool>
+                     </connection>
+                     <statement>
+                        <sql>INSERT INTO veon.apim_log_response(transactionId, apiName, interfaceName, response, msisdn, status)  values (?, ?, ?, ?, ?, ?)</sql>
+                        <parameter expression="get-property('TRANSACTION_ID')" type="VARCHAR"/>
+                        <parameter expression="get-property('API_NAME')" type="VARCHAR"/>
+                        <parameter expression="get-property('INTERFACE_NAME')" type="VARCHAR"/>
+                        <parameter expression="get-property('JSON_RESPONSE')" type="VARCHAR"/>
+                        <parameter expression="get-property('REQ_MSISDN')" type="VARCHAR"/>
+                        <parameter value="KO" type="VARCHAR"/>
+                     </statement>
+                  </dbreport>
+               </sequence>
+               <!-- Response Logging ends here --><respond/>
+            </then>
+            <else>
+               <property name="Authorization"
+                         expression="get-property('accesstokenheader')"
+                         scope="transport"
+                         type="STRING"/>
+               <header name="Accept" scope="transport" value="application/json"/>
+               <header name="Content-Type" scope="transport" value="application/json"/>
+               <!-- Log the request in DB --><property name="RESOURCE_URI"
+                         expression="fn:concat('http://idmtest.jazz.com.pk/identity/connect/userinfo?msisdn=',get-property('uri.var.MSISDN'))"/>
+               <property name="API_NAME" value="IDM"/>
+               <property name="INTERFACE_NAME" value="UserInfo"/>
+               <property name="LOG_REQUEST" value=""/>
+               <sequence name="LOG_REQUEST_SEQUENCE" statistics="enable" trace="enable">
+                  <dbreport>
+                     <connection>
+                        <pool>
+                           <dsName>jdbc/ApimLoggingDS</dsName>
+                        </pool>
+                     </connection>
+                     <statement>
+                        <sql>INSERT INTO veon.apim_log_request(transactionId, apiName, interfaceName, request, msisdn, resourceURI)  values (?, ?, ?, ?, ?, ?)</sql>
+                        <parameter expression="get-property('TRANSACTION_ID')" type="VARCHAR"/>
+                        <parameter expression="get-property('API_NAME')" type="VARCHAR"/>
+                        <parameter expression="get-property('INTERFACE_NAME')" type="VARCHAR"/>
+                        <parameter expression="get-property('LOG_REQUEST')" type="VARCHAR"/>
+                        <parameter expression="get-property('REQ_MSISDN')" type="VARCHAR"/>
+                        <parameter expression="get-property('RESOURCE_URI')" type="VARCHAR"/>
+                     </statement>
+                  </dbreport>
+               </sequence>
+               <!-- Log request ends --><call>
+                  <endpoint>
+                     <http method="GET"
+                           uri-template="http://idmtest.jazz.com.pk/identity/connect/userinfo?msisdn={uri.var.MSISDN}"/>
+                  </endpoint>
+               </call>
+               <log level="full"/>
+               <property name="messageType"
+                         value="application/json"
+                         scope="axis2"
+                         type="STRING"/>
+               <property name="TokenCheckStatus"
+                         expression="json-eval($.status)"
+                         scope="default"
+                         type="STRING"/>
+               <property name="TokenCheckMessage"
+                         expression="json-eval($.message)"
+                         scope="default"
+                         type="STRING"/>
+               <property name="TokenCheckDescription"
+                         expression="json-eval($.description)"
+                         scope="default"
+                         type="STRING"/>
+               <log level="custom">
+                  <property name="TokenEventStatus" expression="json-eval($.status)"/>
+               </log>
+               <filter source="get-property('TokenCheckStatus')" regex="OK">
+                  <then>
+                     <log level="custom" description="INIT_LOG">
+                        <property name="[1a.TOKEN CHECK]" value="[EffectiveServices] TOKEN CHECK OK"/>
+                     </log>
+                     <enrich>
+                        <source type="property" clone="true" property="ORIGINAL_PAYLOAD"/>
+                        <target type="body"/>
+                     </enrich>
+                     <!-- Response logging starts --><property name="JSON_RESPONSE" expression="json-eval($.)"/>
+                     <property name="API_NAME" value="IDM"/>
+                     <property name="INTERFACE_NAME" value="UserInfo"/>
+                     <property name="LOG_RESPONSE_STATUS" value="OK"/>
+                     <sequence name="LOG_RESPONSE_SEQUENCE" statistics="enable" trace="enable">
+                        <dbreport>
+                           <connection>
+                              <pool>
+                                 <dsName>jdbc/ApimLoggingDS</dsName>
+                              </pool>
+                           </connection>
+                           <statement>
+                              <sql>INSERT INTO veon.apim_log_response(transactionId, apiName, interfaceName, response, msisdn, status)  values (?, ?, ?, ?, ?, ?)</sql>
+                              <parameter expression="get-property('TRANSACTION_ID')" type="VARCHAR"/>
+                              <parameter expression="get-property('API_NAME')" type="VARCHAR"/>
+                              <parameter expression="get-property('INTERFACE_NAME')" type="VARCHAR"/>
+                              <parameter expression="get-property('JSON_RESPONSE')" type="VARCHAR"/>
+                              <parameter expression="get-property('REQ_MSISDN')" type="VARCHAR"/>
+                              <parameter expression="get-property('LOG_RESPONSE_STATUS')" type="VARCHAR"/>
+                           </statement>
+                        </dbreport>
+                     </sequence>
+                     <!-- Response logging ends --></then>
+                  <else>
+                     <log level="custom" description="INIT_LOG">
+                        <property name="[1a.TOKEN CHECK]" value="[EffectiveServices] TOKEN CHECK FAILED"/>
+                     </log>
+                     <!-- Response logging starts --><property name="JSON_RESPONSE" expression="json-eval($.)"/>
+                     <property name="API_NAME" value="IDM"/>
+                     <property name="INTERFACE_NAME" value="UserInfo"/>
+                     <property name="LOG_RESPONSE_STATUS" value="KO"/>
+                     <sequence name="LOG_RESPONSE_SEQUENCE" statistics="enable" trace="enable">
+                        <dbreport>
+                           <connection>
+                              <pool>
+                                 <dsName>jdbc/ApimLoggingDS</dsName>
+                              </pool>
+                           </connection>
+                           <statement>
+                              <sql>INSERT INTO veon.apim_log_response(transactionId, apiName, interfaceName, response, msisdn, status)  values (?, ?, ?, ?, ?, ?)</sql>
+                              <parameter expression="get-property('TRANSACTION_ID')" type="VARCHAR"/>
+                              <parameter expression="get-property('API_NAME')" type="VARCHAR"/>
+                              <parameter expression="get-property('INTERFACE_NAME')" type="VARCHAR"/>
+                              <parameter expression="get-property('JSON_RESPONSE')" type="VARCHAR"/>
+                              <parameter expression="get-property('REQ_MSISDN')" type="VARCHAR"/>
+                              <parameter expression="get-property('LOG_RESPONSE_STATUS')" type="VARCHAR"/>
+                           </statement>
+                        </dbreport>
+                     </sequence>
+                     <!-- Response logging ends --><property name="messageType"
+                               value="application/json"
+                               scope="axis2"
+                               type="STRING"/>
+                     <log level="custom" description="Print Case">
+                        <property name="Error Response Switch ---&gt; " value="USERnot AUTHENTICATED"/>
+                     </log>
+                     <payloadFactory media-type="json" description="ResponseMsg">
+                        <format>
+    {&#xD;
+        "errorId": "ESE-403",&#xD;
+        "code": "FORBIDDEN",&#xD;
+        "message": "User Access Token Invalid"&#xD;
+    }&#xD;
+</format>
+                        <args/>
+                     </payloadFactory>
+                     <log level="full"/>
+                     <property name="HTTP_SC" value="403" scope="axis2" type="STRING"/>
+                     <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                     <header name="To" scope="default" expression="get-property('ReplyTo')"/>
+                     <property name="messageType"
+                               value="application/json"
+                               scope="axis2"
+                               type="STRING"/>
+                     <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                     <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                     <header name="To" scope="default" action="remove"/>
+                     <!-- Log the API Response here --><property name="JSON_RESPONSE" expression="json-eval($.)"/>
+                     <property name="API_NAME" value="Subscribers"/>
+                     <property name="INTERFACE_NAME" value="OfferDetails"/>
+                     <sequence name="LOG_RESPONSE_SEQUENCE" statistics="enable" trace="enable">
+                        <dbreport>
+                           <connection>
+                              <pool>
+                                 <dsName>jdbc/ApimLoggingDS</dsName>
+                              </pool>
+                           </connection>
+                           <statement>
+                              <sql>INSERT INTO veon.apim_log_response(transactionId, apiName, interfaceName, response, msisdn, status)  values (?, ?, ?, ?, ?, ?)</sql>
+                              <parameter expression="get-property('TRANSACTION_ID')" type="VARCHAR"/>
+                              <parameter expression="get-property('API_NAME')" type="VARCHAR"/>
+                              <parameter expression="get-property('INTERFACE_NAME')" type="VARCHAR"/>
+                              <parameter expression="get-property('JSON_RESPONSE')" type="VARCHAR"/>
+                              <parameter expression="get-property('REQ_MSISDN')" type="VARCHAR"/>
+                              <parameter value="KO" type="VARCHAR"/>
+                           </statement>
+                        </dbreport>
+                     </sequence>
+                     <!-- Response Logging ends here --><respond/>
+                  </else>
+               </filter>
+            </else>
+         </filter>
+         <property name="OFFER_ID"
+                   expression="get-property('uri.var.offers')"
+                   scope="default"
+                   type="STRING"
+                   description="TransactionID"/>
+         <filter xpath="get-property('uri.var.subscriberId') = get-property('uri.var.subscriptionId')">
+            <then>
+               <log level="custom" description="MSISDNS_MATCHED">
+                  <property name="[2. MSISDN-MATCH]"
+                            value="[OfferDetails] SubscriberID and SubscriptionID equality check OK"/>
+               </log>
+               <filter source="get-property('uri.var.subscriberId')" regex="^\+?\d{10,15}$">
+                  <then>
+                     <log level="custom" description="REGEX_CHK_OK">
+                        <property name="[3. MSISDN-REGEX-CHK]" value="[OfferDetails] MSISDN Regex Chk OK"/>
+                     </log>
+                     <filter xpath="fn:starts-with(get-property('uri.var.subscriberId'),'+')">
+                        <then>
+                           <log level="custom" description="MSISDN_WITH_PLUS">
+                              <property name="[4.MSISDN-PLUS-CHK]"
+                                        value="[OfferDetails] MSISDN starts with plus"/>
+                           </log>
+                           <property name="NORMALIZED_MSISDN"
+                                     expression="fn:concat('0',fn:substring(get-property('uri.var.subscriberId'),4))"
+                                     scope="default"
+                                     type="STRING"
+                                     description="NORMALIZED_MSISDN"/>
+                        </then>
+                        <else>
+                           <log level="custom" description="MSISDN-WITHOUT_PLUS">
+                              <property name="[4.MSISDN-PLUS-CHK]"
+                                        value="[OfferDetails] MSISDN doesn't contain plus"/>
+                           </log>
+                           <property name="NORMALIZED_MSISDN"
+                                     expression="fn:concat('0',fn:substring(get-property('uri.var.subscriberId'),3))"
+                                     scope="default"
+                                     type="STRING"
+                                     description="NORMALIZED_MSISDN"/>
+                        </else>
+                     </filter>
+                     <filter xpath="fn:string-length(get-property('NORMALIZED_MSISDN'))=11">
+                        <then>
+                           <log level="custom" description="MSISDN_LEGTH_OK">
+                              <property name="[5. MSISDN Length Check]"
+                                        value="[OfferDetails] MSISDN Length Check is OK"/>
+                              <property name="[6. Call Backend Tibco API]"
+                                        value="[OfferDetails] Sending Request to GetSubscriberStatus"/>
+                           </log>
+                           <payloadFactory media-type="xml" description="xmlrequest">
+                              <format key="conf:repository/esb/req"/>
+                              <args>
+                                 <arg evaluator="xml" expression="get-property('NORMALIZED_MSISDN')"/>
+                                 <arg evaluator="xml" expression="get-property('TRANSACTION_ID')"/>
+                              </args>
+                           </payloadFactory>
+                           <log level="full" description="LogPayload"/>
+                           <!-- Log the request in DB --><property name="RESOURCE_URI"
+                                     value="http://10.50.173.60:3137/MEFBS/Services/MEFBusinessServices/Controller/SOAPMainListener"/>
+                           <property name="API_NAME" value="MEFBusinessService"/>
+                           <property name="INTERFACE_NAME" value="GetSubscriberStatus"/>
+                           <property name="REQ_MSISDN" expression="get-property('uri.var.subscriberId')"/>
+                           <enrich>
+                              <source type="body" clone="true"/>
+                              <target type="property" property="LOG_REQUEST"/>
+                           </enrich>
+                           <sequence name="LOG_REQUEST_SEQUENCE" statistics="enable" trace="enable">
+                              <dbreport>
+                                 <connection>
+                                    <pool>
+                                       <dsName>jdbc/ApimLoggingDS</dsName>
+                                    </pool>
+                                 </connection>
+                                 <statement>
+                                    <sql>INSERT INTO veon.apim_log_request(transactionId, apiName, interfaceName, request, msisdn, resourceURI)  values (?, ?, ?, ?, ?, ?)</sql>
+                                    <parameter expression="get-property('TRANSACTION_ID')" type="VARCHAR"/>
+                                    <parameter expression="get-property('API_NAME')" type="VARCHAR"/>
+                                    <parameter expression="get-property('INTERFACE_NAME')" type="VARCHAR"/>
+                                    <parameter expression="get-property('LOG_REQUEST')" type="VARCHAR"/>
+                                    <parameter expression="get-property('REQ_MSISDN')" type="VARCHAR"/>
+                                    <parameter expression="get-property('RESOURCE_URI')" type="VARCHAR"/>
+                                 </statement>
+                              </dbreport>
+                           </sequence>
+                           <!-- Log request ends --><header name="SOAPAction"
+                                   scope="transport"
+                                   value="/Services/MEFBusinessServices/Controller/SOAPMainListener"/>
+                           <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                           <send>
+                              <endpoint name="MEFBusinessServiceEP">
+                                 <address uri="http://10.50.173.60:3137/MEFBS/Services/MEFBusinessServices/Controller/SOAPMainListener"
+                                          format="soap11">
+                                    <timeout>
+                                       <duration>10000</duration>
+                                       <responseAction>fault</responseAction>
+                                    </timeout>
+                                    <suspendOnFailure>
+                                       <errorCodes>-1</errorCodes>
+                                       <initialDuration>0</initialDuration>
+                                       <progressionFactor>1.0</progressionFactor>
+                                       <maximumDuration>0</maximumDuration>
+                                    </suspendOnFailure>
+                                    <markForSuspension>
+                                       <errorCodes>-1</errorCodes>
+                                    </markForSuspension>
+                                 </address>
+                              </endpoint>
+                           </send>
+                        </then>
+                        <else>
+                           <log level="custom" description="MSISDN_LENGTH_KO">
+                              <property name="[5. MSISDN Length Check]"
+                                        value="[OfferDetails] MSISDN Length Check Failed"/>
+                           </log>
+                        </else>
+                     </filter>
+                  </then>
+                  <else>
+                     <log level="custom" description="REGEX-CHK-KO">
+                        <property name="[3. MSISDN-REGEX-CHK]"
+                                  value="[OfferDetails] MSISDN Regex Chk failed"/>
+                     </log>
+                  </else>
+               </filter>
+            </then>
+            <else>
+               <log level="custom" description="MSISDNS_UNMATCHED">
+                  <property name="[MSISDN-MATCH]"
+                            value="[OfferDetails] SubscriberID doesnot equal SubscriptionID"/>
+               </log>
+            </else>
+         </filter>
+      </inSequence>
+      <outSequence>
+         <log level="custom" description="LOG_RESPONSE">
+            <property name="[RESPONSE LOGGING]"
+                      value="***********************************************"/>
+         </log>
+         <log level="full" description="GetSubscriberStatusResponse"/>
+         <property xmlns:ns0="http://www.mobilink.com.pk/schemas/MEFBusinessServices/Common/GenericAgreement.xsd"
+                   xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"
+                   name="HeaderStatus"
+                   expression="/SOAP-ENV:Envelope/SOAP-ENV:Body/ns0:Response/ns0:HeaderRes/ns0:Status"
+                   scope="default"
+                   type="STRING"
+                   description="Status"/>
+         <filter source="get-property('HeaderStatus')" regex="OK">
+            <then>
+               <log level="custom" description="LOG_HEADER_STATUS">
+                  <property name="[1. HEADER_STATUS_STATUS]"
+                            expression="fn:concat('[OfferDetails] HeaderStatus: ',get-property('HeaderStatus'))"/>
+               </log>
+               <!-- Response Logging Starts here --><property name="LOG_RESPONSE_STATUS" value="OK"/>
+               <property name="API_NAME" value="MEFBusinessService"/>
+               <property name="INTERFACE_NAME" value="GetSubscriberStatus"/>
+               <enrich>
+                  <source type="body" clone="true"/>
+                  <target type="property" property="LOG_RESPONSE"/>
+               </enrich>
+               <sequence name="LOG_RESPONSE_SEQUENCE" statistics="enable" trace="enable">
+                  <dbreport>
+                     <connection>
+                        <pool>
+                           <dsName>jdbc/ApimLoggingDS</dsName>
+                        </pool>
+                     </connection>
+                     <statement>
+                        <sql>INSERT INTO veon.apim_log_response(transactionId, apiName, interfaceName, response, msisdn, status)  values (?, ?, ?, ?, ?, ?)</sql>
+                        <parameter expression="get-property('TRANSACTION_ID')" type="VARCHAR"/>
+                        <parameter expression="get-property('API_NAME')" type="VARCHAR"/>
+                        <parameter expression="get-property('INTERFACE_NAME')" type="VARCHAR"/>
+                        <parameter expression="get-property('LOG_RESPONSE')" type="VARCHAR"/>
+                        <parameter expression="get-property('REQ_MSISDN')" type="VARCHAR"/>
+                        <parameter expression="get-property('LOG_RESPONSE_STATUS')" type="VARCHAR"/>
+                     </statement>
+                  </dbreport>
+               </sequence>
+               <!-- Response logging ends here --><property xmlns:ns0="http://www.mobilink.com.pk/schemas/MEFBusinessServices/Common/GenericAgreement.xsd"
+                         xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"
+                         name="GETSUBSCRIBERSTATUS_CDATA"
+                         expression="/SOAP-ENV:Envelope/SOAP-ENV:Body/ns0:Response/ns0:Body/text()"
+                         scope="default"
+                         type="STRING"
+                         description="rawCdata"/>
+               <class name="com.arcanainfo.wso2.esb.eligibleoffers.parser.GetSubscriberStatusParser"
+                      description="GetSubscriberStatusParser"/>
+               <filter source="get-property('IS_WARID')" regex="FALSE">
+                  <then>
+                     <log level="custom" description="LOG_SUBSCRIBER_CATEGORY">
+                        <property name="[SUBSCRIBER_CATEGORY]"
+                                  value="[OfferDetails] Subscriber Category Check passed, calling Hybris endpoint"/>
+                        <property name="uri.var.MSISDN" expression="get-property('NORMALIZED_MSISDN')"/>
+                        <property name="uri.var.OFFERID" expression="get-property('OFFER_ID')"/>
+                     </log>
+                     <property name="uri.var.MSISDN"
+                               expression="get-property('NORMALIZED_MSISDN')"
+                               scope="default"
+                               type="STRING"
+                               description="MSISDN"/>
+                     <property name="uri.var.OFFERID"
+                               expression="get-property('OFFER_ID')"
+                               scope="default"
+                               type="STRING"/>
+                     <property name="Accept"
+                               value="application/xml"
+                               scope="transport"
+                               type="STRING"/>
+                     <filter xpath="fn:starts-with(fn:upper-case(get-property('OFFER')),'MCMM')">
+                        <then><!-- Call CMS --><payloadFactory media-type="xml" description="xmlrequest">
+                              <format key="conf:repository/esb/cmsgetoffers"/>
+                              <args>
+                                 <arg evaluator="xml" expression="get-property('REQ_MSISDN')"/>
+                                 <arg evaluator="xml" expression="get-property('TRANSACTION_ID')"/>
+                              </args>
+                           </payloadFactory>
+                           <!-- Log the request in DB --><property name="RESOURCE_URI"
+                                     value="http://10.50.18.89:7801/services/VeonInteractService"/>
+                           <property name="API_NAME" value="CMS"/>
+                           <property name="INTERFACE_NAME" value="GetOfferDetails"/>
+                           <property name="REQ_MSISDN" expression="get-property('uri.var.subscriberId')"/>
+                           <enrich>
+                              <source type="body" clone="true"/>
+                              <target type="property" property="LOG_REQUEST"/>
+                           </enrich>
+                           <sequence name="LOG_REQUEST_SEQUENCE" statistics="enable" trace="enable">
+                              <dbreport>
+                                 <connection>
+                                    <pool>
+                                       <dsName>jdbc/ApimLoggingDS</dsName>
+                                    </pool>
+                                 </connection>
+                                 <statement>
+                                    <sql>INSERT INTO veon.apim_log_request(transactionId, apiName, interfaceName, request, msisdn, resourceURI)  values (?, ?, ?, ?, ?, ?)</sql>
+                                    <parameter expression="get-property('TRANSACTION_ID')" type="VARCHAR"/>
+                                    <parameter expression="get-property('API_NAME')" type="VARCHAR"/>
+                                    <parameter expression="get-property('INTERFACE_NAME')" type="VARCHAR"/>
+                                    <parameter expression="get-property('LOG_REQUEST')" type="VARCHAR"/>
+                                    <parameter expression="get-property('REQ_MSISDN')" type="VARCHAR"/>
+                                    <parameter expression="get-property('RESOURCE_URI')" type="VARCHAR"/>
+                                 </statement>
+                              </dbreport>
+                           </sequence>
+                           <!-- Log request ends --><!-- call the cms endpoint --><log level="full"/>
+                           <header name="SOAPAction"
+                                   scope="transport"
+                                   value="http://www.jazz.org/InteractIntegrationService/GetOfferDetails"/>
+                           <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+                           <call>
+                              <endpoint key="CMS"/>
+                           </call>
+                           <log level="custom">
+                              <property name="CMSResponse" value="**** CMS Response ****"/>
+                           </log>
+                           <log level="full"/>
+                           <property xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                                     xmlns:NS1="http://www.jazz.org/InteractIntegrationService/"
+                                     name="CMS_RETURNCODE"
+                                     expression="//NS1:GetOfferDetailsResponse/ReturnCode"
+                                     scope="default"
+                                     type="STRING"
+                                     description="CMS_RETURNCODE"/>
+                           <filter source="get-property('CMS_RETURNCODE')" regex="0">
+                              <then>
+                                 <property xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                                           xmlns:NS1="http://www.jazz.org/InteractIntegrationService/"
+                                           name="CMS_PRODLIST"
+                                           expression="//NS1:GetOfferDetailsResponse/productsList/product"
+                                           scope="default"
+                                           type="STRING"
+                                           description="CMS_prodList"/>
+                                 <!-- Set this property as a payload --><payloadFactory media-type="xml" description="prodlist">
+                                    <format>
+                                       <productsList xmlns="">$1</productsList>
+                                    </format>
+                                    <args>
+                                       <arg evaluator="xml" expression="get-property('CMS_PRODLIST')"/>
+                                    </args>
+                                 </payloadFactory>
+                                 <!-- Log CMS response starts here --><enrich>
+                                    <source type="body" clone="true"/>
+                                    <target type="property" property="LOG_RESPONSE"/>
+                                 </enrich>
+                                 <property name="API_NAME" value="CMS"/>
+                                 <property name="INTERFACE_NAME" value="GetProductDetails"/>
+                                 <property name="LOG_RESPONSE_STATUS" value="OK"/>
+                                 <sequence name="LOG_RESPONSE_SEQUENCE" statistics="enable" trace="enable">
+                                    <dbreport>
+                                       <connection>
+                                          <pool>
+                                             <dsName>jdbc/ApimLoggingDS</dsName>
+                                          </pool>
+                                       </connection>
+                                       <statement>
+                                          <sql>INSERT INTO veon.apim_log_response(transactionId, apiName, interfaceName, response, msisdn, status)  values (?, ?, ?, ?, ?, ?)</sql>
+                                          <parameter expression="get-property('TRANSACTION_ID')" type="VARCHAR"/>
+                                          <parameter expression="get-property('API_NAME')" type="VARCHAR"/>
+                                          <parameter expression="get-property('INTERFACE_NAME')" type="VARCHAR"/>
+                                          <parameter expression="get-property('LOG_RESPONSE')" type="VARCHAR"/>
+                                          <parameter expression="get-property('REQ_MSISDN')" type="VARCHAR"/>
+                                          <parameter expression="get-property('LOG_RESPONSE_STATUS')" type="VARCHAR"/>
+                                       </statement>
+                                    </dbreport>
+                                 </sequence>
+                                 <!-- Log CMS response ends here --></then>
+                              <else>
+                                 <payloadFactory media-type="json" description="ResponseMsg">
+                                    <format>{&#xD;
+					"errorId": "ODE-404",&#xD;
+					"code": "NOT_FOUND",&#xD;
+					"message": "Offer Details not found"&#xD;
+					}&#xD;
+			</format>
+                                    <args/>
+                                 </payloadFactory>
+                                 <property name="HTTP_SC" value="404" scope="axis2" type="STRING"/>
+                                 <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                                 <header name="To" scope="default" expression="get-property('ReplyTo')"/>
+                                 <property name="messageType"
+                                           value="application/json"
+                                           scope="axis2"
+                                           type="STRING"/>
+                                 <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                                 <header name="To" scope="default" action="remove"/>
+                                 <!-- Log CMS response starts here --><enrich>
+                                    <source type="body" clone="true"/>
+                                    <target type="property" property="LOG_RESPONSE"/>
+                                 </enrich>
+                                 <property name="API_NAME" value="CMS"/>
+                                 <property name="INTERFACE_NAME" value="GetProductDetails"/>
+                                 <property name="LOG_RESPONSE_STATUS" value="KO"/>
+                                 <sequence name="LOG_RESPONSE_SEQUENCE" statistics="enable" trace="enable">
+                                    <dbreport>
+                                       <connection>
+                                          <pool>
+                                             <dsName>jdbc/ApimLoggingDS</dsName>
+                                          </pool>
+                                       </connection>
+                                       <statement>
+                                          <sql>INSERT INTO veon.apim_log_response(transactionId, apiName, interfaceName, response, msisdn, status)  values (?, ?, ?, ?, ?, ?)</sql>
+                                          <parameter expression="get-property('TRANSACTION_ID')" type="VARCHAR"/>
+                                          <parameter expression="get-property('API_NAME')" type="VARCHAR"/>
+                                          <parameter expression="get-property('INTERFACE_NAME')" type="VARCHAR"/>
+                                          <parameter expression="get-property('LOG_RESPONSE')" type="VARCHAR"/>
+                                          <parameter expression="get-property('REQ_MSISDN')" type="VARCHAR"/>
+                                          <parameter expression="get-property('LOG_RESPONSE_STATUS')" type="VARCHAR"/>
+                                       </statement>
+                                    </dbreport>
+                                 </sequence>
+                                 <!-- Log CMS response ends here --><send/>
+                              </else>
+                           </filter>
+                        </then>
+                        <else><!-- Call Hybris --><!-- Log the request in DB --><property name="RESOURCE_URI"
+                                     expression="fn:concat('http://10.50.20.23:9002/occwebservices/v2/telco/products/productDetails?msisdn=',get-property('NORMALIZED_MSISDN'))"/>
+                           <property name="API_NAME" value="Hybris"/>
+                           <property name="INTERFACE_NAME" value="ProductDetails"/>
+                           <property name="REQ_MSISDN" expression="get-property('uri.var.subscriberId')"/>
+                           <property name="LOG_REQUEST" value=""/>
+                           <sequence name="LOG_REQUEST_SEQUENCE" statistics="enable" trace="enable">
+                              <dbreport>
+                                 <connection>
+                                    <pool>
+                                       <dsName>jdbc/ApimLoggingDS</dsName>
+                                    </pool>
+                                 </connection>
+                                 <statement>
+                                    <sql>INSERT INTO veon.apim_log_request(transactionId, apiName, interfaceName, request, msisdn, resourceURI)  values (?, ?, ?, ?, ?, ?)</sql>
+                                    <parameter expression="get-property('TRANSACTION_ID')" type="VARCHAR"/>
+                                    <parameter expression="get-property('API_NAME')" type="VARCHAR"/>
+                                    <parameter expression="get-property('INTERFACE_NAME')" type="VARCHAR"/>
+                                    <parameter expression="get-property('LOG_REQUEST')" type="VARCHAR"/>
+                                    <parameter expression="get-property('REQ_MSISDN')" type="VARCHAR"/>
+                                    <parameter expression="get-property('RESOURCE_URI')" type="VARCHAR"/>
+                                 </statement>
+                              </dbreport>
+                           </sequence>
+                           <!-- Log request ends --><call>
+                              <endpoint>
+                                 <http statistics="enable"
+                                       trace="enable"
+                                       method="GET"
+                                       uri-template="http://10.50.20.23:9002/occwebservices/v2/telco/products/productDetails?msisdn={uri.var.MSISDN}&amp;productCode={uri.var.OFFERID}&amp;refreshData=true"/>
+                              </endpoint>
+                           </call>
+                           <log level="full" description="Hybris_Response"/>
+                           <property name="HYBRIS_RES"
+                                     expression="$body"
+                                     scope="default"
+                                     type="STRING"
+                                     description="HYBRIS_RES"/>
+                           <property name="PROD_LIST"
+                                     expression="//productsList"
+                                     scope="default"
+                                     type="STRING"
+                                     description="PROD_LIST"/>
+                           <property name="HYBRIS_ERROR_RESPONSE"
+                                     expression="//errorList/errors[1]/type"
+                                     scope="default"
+                                     type="STRING"
+                                     description="ERROR_LIST"/>
+                           <log level="custom" description="PRINT_HYBRIS_RES">
+                              <property name="[HYBRIS_RESPONSE]" expression="get-property('PROD_LIST')"/>
+                              <property name="[HYBRIS_ERROR_RESPONSE]"
+                                        expression="get-property('HYBRIS_ERROR_RESPONSE')"/>
+                           </log>
+                           <filter xpath="fn:not(get-property('HYBRIS_ERROR_RESPONSE')='')">
+                              <then><!-- Log Hybris response starts here --><enrich>
+                                    <source type="body" clone="true"/>
+                                    <target type="property" property="LOG_RESPONSE"/>
+                                 </enrich>
+                                 <property name="API_NAME" value="Hybris"/>
+                                 <property name="INTERFACE_NAME" value="ProductDetails"/>
+                                 <property name="LOG_RESPONSE_STATUS" value="KO"/>
+                                 <sequence name="LOG_RESPONSE_SEQUENCE" statistics="enable" trace="enable">
+                                    <dbreport>
+                                       <connection>
+                                          <pool>
+                                             <dsName>jdbc/ApimLoggingDS</dsName>
+                                          </pool>
+                                       </connection>
+                                       <statement>
+                                          <sql>INSERT INTO veon.apim_log_response(transactionId, apiName, interfaceName, response, msisdn, status)  values (?, ?, ?, ?, ?, ?)</sql>
+                                          <parameter expression="get-property('TRANSACTION_ID')" type="VARCHAR"/>
+                                          <parameter expression="get-property('API_NAME')" type="VARCHAR"/>
+                                          <parameter expression="get-property('INTERFACE_NAME')" type="VARCHAR"/>
+                                          <parameter expression="get-property('LOG_RESPONSE')" type="VARCHAR"/>
+                                          <parameter expression="get-property('REQ_MSISDN')" type="VARCHAR"/>
+                                          <parameter expression="get-property('LOG_RESPONSE_STATUS')" type="VARCHAR"/>
+                                       </statement>
+                                    </dbreport>
+                                 </sequence>
+                                 <!-- Log Hybris response ends here --><payloadFactory media-type="json" description="ResponseMsg">
+                                    <format>{&#xD;
+									"errorId": "ODE-404",&#xD;
+									"code": "NOT_FOUND",&#xD;
+									"message": "Offer Details not found"&#xD;
+									}&#xD;
+							</format>
+                                    <args/>
+                                 </payloadFactory>
+                                 <property name="HTTP_SC" value="404" scope="axis2" type="STRING"/>
+                                 <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+                                 <header name="To" scope="default" expression="get-property('ReplyTo')"/>
+                                 <property name="messageType"
+                                           value="application/json"
+                                           scope="axis2"
+                                           type="STRING"/>
+                                 <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+                                 <header name="To" scope="default" action="remove"/>
+                                 <send/>
+                              </then>
+                              <else/>
+                           </filter>
+                        </else>
+                     </filter>
+                     <script language="js">var payload = mc.getPayloadXML();
+        var log = mc.getServiceLog(); log.info("Logging inside Script Mediator" + payload);
+        var results = payload; log.info("Element Value is " + payload.product[0]);
+        var productoffer ={};
+        var categoryTag = [];
+       
+        log.info("Length is " + results);
+        for (i = 0; i &lt; results.length(); ++i) {
+            location_object = results[i];
+            var offers = []; 
+            log.info("Started Creating CategoryTag Object");
+            var categoryTag = [];
+            categoryTag.push({
+                "en": location_object.category.toString()
+            });
+            log.info("Started Creating OfferPrice and Its Charge Object");
+            var charge = {};
+          log.info("Charge AmountValue Before parsing is =" + location_object.initialCharge.price.toString());
+            
+            if (location_object.initialCharge.price.toString() !="") {
+            charge["amount"] = parseFloat(location_object.initialCharge.price.toString());
+            }
+            else {
+             charge["amount"] = 0;
+            }
+            charge["currency"] = "PKR";
+            log.info("Charge AmountValue After parsing is =" + charge["amount"]);
+            
+            var offerPriceName = {};
+            offerPriceName["en"] = "Subscription Fee";
+            
+            var offerPrice = [];
+            offerPrice.push({
+                "priceId": "SubscriptionFee",
+                "name": offerPriceName,
+                "charge": charge
+            });
+            
+            log.info("recurringCharge Value  is =" + location_object.recurringCharge.length());
+            if (location_object.recurringCharge.length() != 0) {
+                log.info("Recurring Charge is not null inside if condition");
+                var charge1 = {};
+                        //var Dt = new Date().toISOString();
+                //var res = Dt.substr(0, 19);
+                //res = res.concat("+05:00");
+                var today = new Date();
+                var res = (today.getFullYear()+'-'+(today.getMonth()&lt;10?'0'+today.getMonth():''+today.getMonth())+'-'+(today.getDate()&lt;10?'0'+today.getDate():''+today.getDate())+'T'+(today.getHours() &lt; 10? '0'+today.getHours():''+today.getHours())+':'+(today.getMinutes()&lt;10?'0'+today.getMinutes():''+today.getMinutes())+':'+(today.getSeconds() &lt; 10?'0'+today.getSeconds():''+today.getSeconds())+'+'+'05:00').toString();
+
+                
+                    if (location_object.recurringCharge.price.toString() !="" ) {
+            charge1["amount"] = parseFloat(location_object.recurringCharge.price.toString());
+            }
+            else {
+             charge1["amount"] = 0;
+            }
+               
+                charge1["recurringChargePeriod"] = res;
+                charge1["currency"] = "PKR";
+                var offerPrice2Name = {};
+        offerPrice2Name["en"] = "Recurring Fee";
+                offerPrice.push({
+                    "priceId": "RecurringFee",
+                    "name": offerPrice2Name,
+                    "charge": charge1
+                });
+            }
+            log.info("Started Creating OfferCharacteristics Object");
+            var nameofferCharacteristics = {};
+            nameofferCharacteristics["en"] = "offerType";
+            var valueofferCharacteristics;
+            if (location_object.productType.toString() == "BASE") {
+                valueofferCharacteristics = "priceplan";
+            } else {
+                valueofferCharacteristics = "service";
+            }
+            var offerCharacteristics = [];
+            offerCharacteristics.push({
+                "characteristicId": "C-offerType",
+                "key": "offerType",
+                "name": nameofferCharacteristics,
+                "value": valueofferCharacteristics
+            });
+            var entitlements = location_object.entitlements.entitlement;
+            log.info("Entitlement Value is = " + entitlements);
+            log.info("Entitlement Length is = " + entitlements.length());
+            log.info("Entitlements Value =" + entitlements.length());
+            for (j = 0; j &lt; entitlements.length(); j++) {
+                iterator_entitlements = entitlements[j];
+                log.info("Entitlement Iteration name value is = " + iterator_entitlements.name.toString());
+                var offersName = {};
+                offersName["en"] = iterator_entitlements.name.toString();
+                var offersCategoryTags = [];
+                var offersCategoryTagsValue;
+				var offersTags = [];
+				var offersTagsValue="";
+                log.info("Usage Unit Value is =" + iterator_entitlements.usageUnit.toString());
+                if (iterator_entitlements.usageUnit.toString() == "MB") {
+                    offersCategoryTagsValue = "Data";
+					offersTagsValue = "internet";
+                    log.info("In Data IF Clause");
+                }
+                if (iterator_entitlements.usageUnit.toString() == "minute") {
+                    offersCategoryTagsValue = "Mins";
+					offersTagsValue = "airtime";
+                    log.info("In Mins IF Clause");
+                }
+                if (iterator_entitlements.usageUnit.toString() == "FnF") {
+                    offersCategoryTagsValue = "FnF";
+                    log.info("In FNF IF Clause");
+                }
+                if (iterator_entitlements.usageUnit.toString() == "SMS") {
+                    offersCategoryTagsValue = "SMS";
+					offersTagsValue = "sms";
+                    log.info("In SMS IF Clause");
+                    log.info("offersCategoryTags Variable Value is=" + offersCategoryTagsValue);
+                }
+				
+				 var offersOfferCharacteristics =[];
+				
+				if (parseInt(iterator_entitlements.quantity.toString()) &gt;= 30000) {
+					
+					offersOfferCharacteristics.push ({
+													  "characteristicId":"C-usageUnlimited",
+													  "key":"isUnlimited",
+													  "name" : {"en":"Unlimited"},
+													  "value" :  true});
+				}
+				
+                offersCategoryTags.push({
+                    "en": offersCategoryTagsValue
+                });
+                log.info("offersCategoryTags Array Value is=" + offersCategoryTags);
+				
+                if (offersTagsValue != "") {
+					offersTags.push(offersTagsValue);
+				}
+				
+                
+           
+            var offersName={};
+                       
+            offersName["en"] = iterator_entitlements.name + "";
+            
+           
+            var unitOfMeasureOnbj = {displayName:{}};
+            
+              if (iterator_entitlements.usageUnit.toString() == "MB") {
+                      unitOfMeasureOnbj.displayName["en"] = "mb";
+            unitOfMeasureOnbj["unit"] = "mb";
+                    log.info("In Data IF Clause");
+                }
+                if (iterator_entitlements.usageUnit.toString() == "minute") {
+                      unitOfMeasureOnbj.displayName["en"] = "min";
+            unitOfMeasureOnbj["unit"] = "min";
+                    log.info("In Mins IF Clause");
+                }
+                if (iterator_entitlements.usageUnit.toString() == "FnF") {
+                      unitOfMeasureOnbj.displayName["en"] = "unit";
+                  unitOfMeasureOnbj["unit"] = "unit";
+                    log.info("In FNF IF Clause");
+                }
+                if (iterator_entitlements.usageUnit.toString() == "SMS") {
+                     unitOfMeasureOnbj.displayName["en"] = "unit";
+                    unitOfMeasureOnbj["unit"] = "unit";
+                    log.info("In SMS IF Clause");
+                    
+                }
+            
+                
+            offersOfferCharacteristics.push ({
+            "characteristicId":"C-offerVolume",
+          "key":"offerVolume",
+          "name" : offersName,
+          "value" :  parseInt(iterator_entitlements.quantity.toString()),
+          "unitOfMeasure" : unitOfMeasureOnbj
+     
+            });
+
+    
+             if (location_object.recurringCharge.length() != 0) {
+            var  offersOfferCharacteristics_name = {};
+            offersOfferCharacteristics_name["en"] = "offerVolumeRenewal";
+             offersOfferCharacteristics.push ({
+            "characteristicId":"C-offerVolumeRenewal",
+        "key":"offerVolumeRenewal",
+          "name" : offersOfferCharacteristics_name,
+          "value" : res
+              
+            });}
+                offers.push({
+                    "offerId": iterator_entitlements.name.toString(),
+                    "name": offersName,
+                    "categoryTags": offersCategoryTags,
+                    "offerCharacteristics" : offersOfferCharacteristics,
+					"tags" : offersTags
+                });
+            }
+            
+           
+            
+               log.info("At Index =" + i);
+        log.info("Product Offer offerID value is  =" + location_object.code.toString());
+        log.info("ProductOffer name value is  =" + location_object.name.toString());
+        log.info("ProductOffer shortDescription value is  =" + location_object.summary.toString());
+        log.info("ProductOffer longDescription value before removing quotes is  =" + location_object.description.toString());
+        log.info("ProductOffer categoryTag value is  =" + categoryTag.toString());
+        log.info("ProductOffer priority value is  =" + i);
+        var longDescription = null;
+        var shortDescription = null;
+        
+        var shortDescription = null;
+         var shortDescriptionValue = null;
+        
+        longDescription = location_object.description.toString().replace(/\"/g, "");
+        longDescriptionUpdatedValue = longDescription.toString().replace(/(\r\n|\n|\r)/gm,"");
+        
+         shortDescription = location_object.summary.toString().replace(/\"/g, "");
+        shortDescriptionValue = shortDescription.toString().replace(/(\r\n|\n|\r)/gm,"");
+        
+        name = {};
+        name["en"] = location_object.name.toString();
+        
+        var shortDescriptionUpdated = {};
+       shortDescriptionUpdated["en"] = shortDescriptionValue.toString() ;
+       
+       var longDescriptionUpdated = {};
+       longDescriptionUpdated["en"] = longDescriptionUpdatedValue.toString();
+       
+        
+        log.info("ProductOffer longDescription value After removing quotes is  =" + longDescription.toString());
+        log.info("ProductOffer offerCharacteristics value is  =" + offerCharacteristics.toString());
+        log.info("ProductOffer offers value is  =" + offers.toString());
+           
+           var iInt2 = parseInt(i.toFixed());
+           productoffer["offerId"] = location_object.id.toString();
+            productoffer["name"] = name;
+            productoffer["shortDescription"] = shortDescriptionUpdated;
+            //productoffer["longDescription"] = longDescriptionUpdated;
+            productoffer["categoryTags"] = categoryTag;
+            productoffer["offerPrice"] = offerPrice;
+            productoffer["offerCharacteristics"] = offerCharacteristics;
+            productoffer["offers"] = offers;
+        }
+       mc.setProperty("productoffer",JSON.stringify(productoffer));</script>
+                     <log level="custom">
+                        <property name="productoffer" expression="get-property('productoffer')"/>
+                     </log>
+                     <!-- Log Hybris response starts here --><enrich>
+                        <source type="body" clone="true"/>
+                        <target type="property" property="LOG_RESPONSE"/>
+                     </enrich>
+                     <property name="API_NAME" value="Hybris"/>
+                     <property name="INTERFACE_NAME" value="ProductDetails"/>
+                     <property name="LOG_RESPONSE_STATUS" value="OK"/>
+                     <sequence name="LOG_RESPONSE_SEQUENCE" statistics="enable" trace="enable">
+                        <dbreport>
+                           <connection>
+                              <pool>
+                                 <dsName>jdbc/ApimLoggingDS</dsName>
+                              </pool>
+                           </connection>
+                           <statement>
+                              <sql>INSERT INTO veon.apim_log_response(transactionId, apiName, interfaceName, response, msisdn, status)  values (?, ?, ?, ?, ?, ?)</sql>
+                              <parameter expression="get-property('TRANSACTION_ID')" type="VARCHAR"/>
+                              <parameter expression="get-property('API_NAME')" type="VARCHAR"/>
+                              <parameter expression="get-property('INTERFACE_NAME')" type="VARCHAR"/>
+                              <parameter expression="get-property('LOG_RESPONSE')" type="VARCHAR"/>
+                              <parameter expression="get-property('REQ_MSISDN')" type="VARCHAR"/>
+                              <parameter expression="get-property('LOG_RESPONSE_STATUS')" type="VARCHAR"/>
+                           </statement>
+                        </dbreport>
+                     </sequence>
+                     <!-- Log Hybris response ends here --><property name="messageType"
+                               value="application/json"
+                               scope="axis2"
+                               type="STRING"/>
+                     <payloadFactory media-type="json">
+                        <format>$1</format>
+                        <args>
+                           <arg evaluator="xml" expression="get-property('productoffer')"/>
+                        </args>
+                     </payloadFactory>
+                     <!-- Log the API Response here --><property name="JSON_RESPONSE" expression="json-eval($.)"/>
+                     <property name="API_NAME" value="Subscribers"/>
+                     <property name="INTERFACE_NAME" value="OfferDetails"/>
+                     <sequence name="LOG_RESPONSE_SEQUENCE" statistics="enable" trace="enable">
+                        <dbreport>
+                           <connection>
+                              <pool>
+                                 <dsName>jdbc/ApimLoggingDS</dsName>
+                              </pool>
+                           </connection>
+                           <statement>
+                              <sql>INSERT INTO veon.apim_log_response(transactionId, apiName, interfaceName, response, msisdn, status)  values (?, ?, ?, ?, ?, ?)</sql>
+                              <parameter expression="get-property('TRANSACTION_ID')" type="VARCHAR"/>
+                              <parameter expression="get-property('API_NAME')" type="VARCHAR"/>
+                              <parameter expression="get-property('INTERFACE_NAME')" type="VARCHAR"/>
+                              <parameter expression="get-property('JSON_RESPONSE')" type="VARCHAR"/>
+                              <parameter expression="get-property('REQ_MSISDN')" type="VARCHAR"/>
+                              <parameter value="OK" type="VARCHAR"/>
+                           </statement>
+                        </dbreport>
+                     </sequence>
+                     <!-- Response Logging ends here --><respond/>
+                  </then>
+                  <else>
+                     <log level="custom" description="IS_WARID">
+                        <property name="[IS_WARID]"
+                                  value="[OfferDetails] Customer is Warid Subscriber. Sending an empty response"/>
+                     </log>
+                     <property name="NO_ENTITY_BODY" value="true" scope="axis2" type="BOOLEAN"/>
+                     <property name="HTTP_SC" value="204" scope="axis2" type="STRING"/>
+                     <payloadFactory media-type="json">
+                        <format>{"ProductOffer":[]}</format>
+                        <args/>
+                     </payloadFactory>
+                     <log level="custom" description="Response Log">
+                        <property name="Response ---&gt;" value="OK (204)"/>
+                     </log>
+                     <!-- Log the API Response here --><property name="JSON_RESPONSE" expression="json-eval($.)"/>
+                     <property name="API_NAME" value="Subscribers"/>
+                     <property name="INTERFACE_NAME" value="OfferDetails"/>
+                     <sequence name="LOG_RESPONSE_SEQUENCE" statistics="enable" trace="enable">
+                        <dbreport>
+                           <connection>
+                              <pool>
+                                 <dsName>jdbc/ApimLoggingDS</dsName>
+                              </pool>
+                           </connection>
+                           <statement>
+                              <sql>INSERT INTO veon.apim_log_response(transactionId, apiName, interfaceName, response, msisdn, status)  values (?, ?, ?, ?, ?, ?)</sql>
+                              <parameter expression="get-property('TRANSACTION_ID')" type="VARCHAR"/>
+                              <parameter expression="get-property('API_NAME')" type="VARCHAR"/>
+                              <parameter expression="get-property('INTERFACE_NAME')" type="VARCHAR"/>
+                              <parameter expression="get-property('JSON_RESPONSE')" type="VARCHAR"/>
+                              <parameter expression="get-property('REQ_MSISDN')" type="VARCHAR"/>
+                              <parameter value="KO" type="VARCHAR"/>
+                           </statement>
+                        </dbreport>
+                     </sequence>
+                     <!-- Response Logging ends here --></else>
+               </filter>
+            </then>
+            <else>
+               <log level="custom" description="LOG_HEADER_STATUS">
+                  <property name="[HEADER_STATUS]"
+                            expression="fn:concat('[OfferDetails] HeaderStatus: ', get-property('HeaderStatus'))"/>
+               </log>
+               <!-- Response Logging starts here --><property name="LOG_RESPONSE_STATUS" value="KO"/>
+               <property name="API_NAME" value="MEFBusinessService"/>
+               <property name="INTERFACE_NAME" value="GetSubscriberStatus"/>
+               <enrich>
+                  <source type="body" clone="true"/>
+                  <target type="property" property="LOG_RESPONSE"/>
+               </enrich>
+               <sequence name="LOG_RESPONSE_SEQUENCE" statistics="enable" trace="enable">
+                  <dbreport>
+                     <connection>
+                        <pool>
+                           <dsName>jdbc/ApimLoggingDS</dsName>
+                        </pool>
+                     </connection>
+                     <statement>
+                        <sql>INSERT INTO veon.apim_log_response(transactionId, apiName, interfaceName, response, msisdn, status)  values (?, ?, ?, ?, ?, ?)</sql>
+                        <parameter expression="get-property('TRANSACTION_ID')" type="VARCHAR"/>
+                        <parameter expression="get-property('API_NAME')" type="VARCHAR"/>
+                        <parameter expression="get-property('INTERFACE_NAME')" type="VARCHAR"/>
+                        <parameter expression="get-property('LOG_RESPONSE')" type="VARCHAR"/>
+                        <parameter expression="get-property('REQ_MSISDN')" type="VARCHAR"/>
+                        <parameter expression="get-property('LOG_RESPONSE_STATUS')" type="VARCHAR"/>
+                     </statement>
+                  </dbreport>
+               </sequence>
+               <!-- Response logging ends here --></else>
+         </filter>
+         <send/>
+      </outSequence>
+      <faultSequence>
+         <log level="custom">
+            <property name="text"
+                      value="**** An unexpected error occured while calling the backend service"/>
+            <property name="message" expression="get-property('ERROR_MESSAGE')"/>
+            <property name="message2" expression="get-property('ERROR_CODE')"/>
+            <property name="message3" expression="get-property('ERROR_DETAIL')"/>
+            <property name="message4" expression="get-property('ERROR_EXCEPTION')"/>
+         </log>
+         <property name="LOG_RESPONSE_STATUS" value="EXCEPTION"/>
+         <property name="API_NAME" value="Subscribers"/>
+         <property name="INTERFACE_NAME" value="OfferDetails"/>
+         <switch source="get-property('ERROR_CODE')">
+            <case regex="101503|101504">
+               <log level="custom" description="Case1">
+                  <property name="Fault Switch --&gt;" value="Inside case 1 of fault switch"/>
+               </log>
+               <property name="messageType"
+                         value="application/json"
+                         scope="axis2"
+                         type="STRING"/>
+               <payloadFactory media-type="json" description="Make Fault 503">
+                  <format>{&#xD;  "failureId": "ESF-503",&#xD;  "code": "DOWNSTREAM_UNAVAILABLE",&#xD;  "message": "Backend Service temporarily unavailable",&#xD;  "recoverable": "true",&#xD;  "retryFallbackTime" : 5&#xD; }</format>
+                  <args/>
+               </payloadFactory>
+               <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+               <header name="To" scope="default" expression="get-property('ReplyTo')"/>
+               <property name="HTTP_SC" value="503" scope="axis2" type="STRING"/>
+               <property name="messageType"
+                         value="application/json"
+                         scope="axis2"
+                         type="STRING"/>
+               <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+               <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+               <header name="To" scope="default" action="remove"/>
+               <!-- Logging begins here --><property name="JSON_RESPONSE" expression="json-eval($.)"/>
+               <sequence name="LOG_RESPONSE_SEQUENCE" statistics="enable" trace="enable">
+                  <dbreport>
+                     <connection>
+                        <pool>
+                           <dsName>jdbc/ApimLoggingDS</dsName>
+                        </pool>
+                     </connection>
+                     <statement>
+                        <sql>INSERT INTO veon.apim_log_response(transactionId, apiName, interfaceName, response, msisdn, status)  values (?, ?, ?, ?, ?, ?)</sql>
+                        <parameter expression="get-property('TRANSACTION_ID')" type="VARCHAR"/>
+                        <parameter expression="get-property('API_NAME')" type="VARCHAR"/>
+                        <parameter expression="get-property('INTERFACE_NAME')" type="VARCHAR"/>
+                        <parameter expression="get-property('JSON_RESPONSE')" type="VARCHAR"/>
+                        <parameter expression="get-property('REQ_MSISDN')" type="VARCHAR"/>
+                        <parameter expression="get-property('LOG_RESPONSE_STATUS')" type="VARCHAR"/>
+                     </statement>
+                  </dbreport>
+               </sequence>
+               <sequence name="LOG_ERROR_SEQUENCE" statistics="enable" trace="enable">
+                  <dbreport>
+                     <connection>
+                        <pool>
+                           <dsName>jdbc/ApimLoggingDS</dsName>
+                        </pool>
+                     </connection>
+                     <statement>
+                        <sql>INSERT INTO veon.apim_log_error(transactionId, apiName, interfaceName, error, msisdn)  values (?, ?, ?, ?, ?)</sql>
+                        <parameter expression="get-property('TRANSACTION_ID')" type="VARCHAR"/>
+                        <parameter expression="get-property('API_NAME')" type="VARCHAR"/>
+                        <parameter expression="get-property('INTERFACE_NAME')" type="VARCHAR"/>
+                        <parameter expression="get-property('JSON_RESPONSE')" type="VARCHAR"/>
+                        <parameter expression="get-property('REQ_MSISDN')" type="VARCHAR"/>
+                     </statement>
+                  </dbreport>
+               </sequence>
+               <!-- Logging ends here --><send/>
+            </case>
+            <case regex="101508">
+               <log level="custom" description="Case2">
+                  <property name="Fault Switch --&gt;" value="Inside case 2 of fault switch"/>
+               </log>
+               <property name="messageType"
+                         value="application/json"
+                         scope="axis2"
+                         type="STRING"/>
+               <payloadFactory media-type="json" description="Make Fault 504">
+                  <format>{&#xD;  "failureId": "ESF-504",&#xD;  "code": "DOWNSTREAM_UNAVAILABLE",&#xD;  "message": "Could'nt establish connection",&#xD;  "recoverable": "true",&#xD;  "retryFallbackTime" : 30&#xD; }</format>
+                  <args/>
+               </payloadFactory>
+               <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+               <header name="To" scope="default" expression="get-property('ReplyTo')"/>
+               <property name="HTTP_SC" value="504" scope="axis2" type="STRING"/>
+               <property name="messageType"
+                         value="application/json"
+                         scope="axis2"
+                         type="STRING"/>
+               <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+               <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+               <header name="To" scope="default" action="remove"/>
+               <!-- Logging begins here --><property name="JSON_RESPONSE" expression="json-eval($.)"/>
+               <sequence name="LOG_RESPONSE_SEQUENCE" statistics="enable" trace="enable">
+                  <dbreport>
+                     <connection>
+                        <pool>
+                           <dsName>jdbc/ApimLoggingDS</dsName>
+                        </pool>
+                     </connection>
+                     <statement>
+                        <sql>INSERT INTO veon.apim_log_response(transactionId, apiName, interfaceName, response, msisdn, status)  values (?, ?, ?, ?, ?, ?)</sql>
+                        <parameter expression="get-property('TRANSACTION_ID')" type="VARCHAR"/>
+                        <parameter expression="get-property('API_NAME')" type="VARCHAR"/>
+                        <parameter expression="get-property('INTERFACE_NAME')" type="VARCHAR"/>
+                        <parameter expression="get-property('JSON_RESPONSE')" type="VARCHAR"/>
+                        <parameter expression="get-property('REQ_MSISDN')" type="VARCHAR"/>
+                        <parameter expression="get-property('LOG_RESPONSE_STATUS')" type="VARCHAR"/>
+                     </statement>
+                  </dbreport>
+               </sequence>
+               <sequence name="LOG_ERROR_SEQUENCE" statistics="enable" trace="enable">
+                  <dbreport>
+                     <connection>
+                        <pool>
+                           <dsName>jdbc/ApimLoggingDS</dsName>
+                        </pool>
+                     </connection>
+                     <statement>
+                        <sql>INSERT INTO veon.apim_log_error(transactionId, apiName, interfaceName, error, msisdn)  values (?, ?, ?, ?, ?)</sql>
+                        <parameter expression="get-property('TRANSACTION_ID')" type="VARCHAR"/>
+                        <parameter expression="get-property('API_NAME')" type="VARCHAR"/>
+                        <parameter expression="get-property('INTERFACE_NAME')" type="VARCHAR"/>
+                        <parameter expression="get-property('JSON_RESPONSE')" type="VARCHAR"/>
+                        <parameter expression="get-property('REQ_MSISDN')" type="VARCHAR"/>
+                     </statement>
+                  </dbreport>
+               </sequence>
+               <!-- Logging ends here --><send/>
+            </case>
+            <default>
+               <log level="custom" description="Default">
+                  <property name="Fault Switch --&gt;" value="Inside default case of fault switch"/>
+               </log>
+               <property name="messageType"
+                         value="application/json"
+                         scope="axis2"
+                         type="STRING"/>
+               <payloadFactory media-type="json" description="Make Fault 500">
+                  <format>{&#xD;  "failureId": "ESF-500",&#xD;  "code": "DOWNSTREAM_FAILURE",&#xD;  "message": "Something went wrong during response processing",&#xD;  "recoverable": "false",&#xD;  "retryFallbackTime" : 30&#xD; }</format>
+                  <args/>
+               </payloadFactory>
+               <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+               <header name="To" scope="default" expression="get-property('ReplyTo')"/>
+               <property name="HTTP_SC" value="500" scope="axis2" type="STRING"/>
+               <property name="messageType"
+                         value="application/json"
+                         scope="axis2"
+                         type="STRING"/>
+               <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+               <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+               <header name="To" scope="default" action="remove"/>
+               <!-- Logging begins here --><property name="JSON_RESPONSE" expression="json-eval($.)"/>
+               <sequence name="LOG_RESPONSE_SEQUENCE" statistics="enable" trace="enable">
+                  <dbreport>
+                     <connection>
+                        <pool>
+                           <dsName>jdbc/ApimLoggingDS</dsName>
+                        </pool>
+                     </connection>
+                     <statement>
+                        <sql>INSERT INTO veon.apim_log_response(transactionId, apiName, interfaceName, response, msisdn, status)  values (?, ?, ?, ?, ?, ?)</sql>
+                        <parameter expression="get-property('TRANSACTION_ID')" type="VARCHAR"/>
+                        <parameter expression="get-property('API_NAME')" type="VARCHAR"/>
+                        <parameter expression="get-property('INTERFACE_NAME')" type="VARCHAR"/>
+                        <parameter expression="get-property('JSON_RESPONSE')" type="VARCHAR"/>
+                        <parameter expression="get-property('REQ_MSISDN')" type="VARCHAR"/>
+                        <parameter expression="get-property('LOG_RESPONSE_STATUS')" type="VARCHAR"/>
+                     </statement>
+                  </dbreport>
+               </sequence>
+               <sequence name="LOG_ERROR_SEQUENCE" statistics="enable" trace="enable">
+                  <dbreport>
+                     <connection>
+                        <pool>
+                           <dsName>jdbc/ApimLoggingDS</dsName>
+                        </pool>
+                     </connection>
+                     <statement>
+                        <sql>INSERT INTO veon.apim_log_error(transactionId, apiName, interfaceName, error, msisdn)  values (?, ?, ?, ?, ?)</sql>
+                        <parameter expression="get-property('TRANSACTION_ID')" type="VARCHAR"/>
+                        <parameter expression="get-property('API_NAME')" type="VARCHAR"/>
+                        <parameter expression="get-property('INTERFACE_NAME')" type="VARCHAR"/>
+                        <parameter expression="get-property('JSON_RESPONSE')" type="VARCHAR"/>
+                        <parameter expression="get-property('REQ_MSISDN')" type="VARCHAR"/>
+                     </statement>
+                  </dbreport>
+               </sequence>
+               <!-- Logging ends here --><send/>
+            </default>
+         </switch>
+      </faultSequence>
+   </resource>
+</api>

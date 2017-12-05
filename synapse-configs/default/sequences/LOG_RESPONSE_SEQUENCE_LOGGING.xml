@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sequence xmlns="http://ws.apache.org/ns/synapse"
+          name="LOG_RESPONSE_SEQUENCE_LOGGING"
+          trace="enable">
+   <dbreport>
+      <connection>
+         <pool>
+            <dsName>jdbc/ottlog</dsName>
+         </pool>
+      </connection>
+      <statement>
+         <sql>INSERT INTO `LOG_RESPONSE` (`ID`, `SYSTEM_NAME`, `INTERFACE_NAME`, `RESPONSE`, `ORDER_ID`,`SOURCE`, `STATUS`) VALUES (?,?,?,?,?,?,?)</sql>
+         <parameter xmlns:ns="http://org.apache.synapse/xsd"
+                    expression="$ctx:TransactionId"
+                    type="VARCHAR"/>
+         <parameter xmlns:ns="http://org.apache.synapse/xsd"
+                    expression="$ctx:SystemName"
+                    type="VARCHAR"/>
+         <parameter xmlns:ns="http://org.apache.synapse/xsd"
+                    expression="$ctx:InterfaceName"
+                    type="VARCHAR"/>
+         <parameter xmlns:ns="http://org.apache.synapse/xsd"
+                    expression="$ctx:ResponsePayload"
+                    type="VARCHAR"/>
+         <parameter xmlns:ns="http://org.apache.synapse/xsd"
+                    expression="$ctx:CorrelationID"
+                    type="VARCHAR"/>
+         <parameter xmlns:ns="http://org.apache.synapse/xsd"
+                    expression="$ctx:ResponseCode"
+                    type="VARCHAR"/>
+         <parameter xmlns:ns="http://org.apache.synapse/xsd"
+                    expression="$ctx:ResponseStatus"
+                    type="VARCHAR"/>
+      </statement>
+   </dbreport>
+</sequence>

@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sequence xmlns="http://ws.apache.org/ns/synapse"
+          name="ChargeSubscriberSecondRes"
+          onError="conf:/faultChargeSubscriber">
+   <log level="full"/>
+   <log level="custom">
+      <property name="property_nameSecond" value="INSIDE CHARGE_SUBSCRIBER RESPONSE"/>
+   </log>
+   <dbreport>
+      <connection>
+         <pool>
+            <dsName>jdbc/ott</dsName>
+         </pool>
+      </connection>
+      <statement>
+         <sql>
+				INSERT INTO OTTHub_Wso2.HUB_TRANSACTION_STORE (CORRELATION_ID, TRANSACTION_ID, INTERFACE_NAME, STATUS,CAUSE,TIMEIN) VALUES (?,?,'ChargeSubscriberResponse','OK','',Now())	
+			</sql>
+         <parameter xmlns:ns="http://org.apache.synapse/xsd"
+                    expression="get-property('CorrelationID')"
+                    type="VARCHAR"/>
+         <parameter xmlns:ns="http://org.apache.synapse/xsd"
+                    expression="get-property('TransactionId')"
+                    type="VARCHAR"/>
+      </statement>
+   </dbreport>
+   <class name="com.arcana.charge.csresponse"/>
+   <log level="custom">
+      <property xmlns:ns="http://org.apache.synapse/xsd"
+                name="CHARGE_SUBSCRIBER_RESPONSE"
+                expression="get-property('status')"/>
+   </log>
+   <switch xmlns:ns="http://org.apache.synapse/xsd" source="get-property('status')">
+      <case regex="NotFound">
+         <log level="custom">
+            <property name="CHARGE_SUBSCRIBER_RESPONSE" value="INSIDE NOT_FOUND"/>
+         </log>
+         <property name="result" value="INVALID_CORRELATION_ID"/>
+      </case>
+      <case regex="KO">
+         <log level="custom">
+            <property name="CHARGE_SUBSCRIBER_RESPONSE" value="INSIDE KO"/>
+         </log>
+         <filter xpath="$ctx:CAUSE='CHARGE_EXCEEDS_LIMIT' or $ctx:CAUSE='INSUFFICIENT_FUNDS' or $ctx:CAUSE='INVALID_CURRENCY' or $ctx:CAUSE='NOT_ELIGIBLE' or $ctx:CAUSE='GENERAL_DECLINE' or $ctx:CAUSE='INDEFINITE_RESULT' or $ctx:CAUSE='INVALID_DATA' or $ctx:CAUSE='ACCOUNT_SUSPENDED' or $ctx:CAUSE='SUBSCRIPTION_CANCELLED'">
+            <then>
+               <property name="result" value="NOT_RESERVED"/>
+            </then>
+            <else>
+               <property name="result" expression="$ctx:CAUSE"/>
+            </else>
+         </filter>
+      </case>
+      <case regex="OK">
+         <log level="custom">
+            <property name="start"
+                      value="******************Checking RFR****************************************"/>
+         </log>
+         <class name="com.arcana.rfr.Rfr"/>
+         <log level="custom">
+            <property name="start" expression="get-property('status')"/>
+         </log>
+         <property name="start"
+                   value="******************After RFR class ****************************************"/>
+         <switch source="get-property('status')">
+            <case regex="OK">
+               <log level="custom">
+                  <property name="start"
+                            value="******************start****************************************"/>
+               </log>
+               <dbreport>
+                  <connection>
+                     <pool>
+                        <dsName>jdbc/ott</dsName>
+                     </pool>
+                  </connection>
+                  <statement>
+                     <sql>
+								Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET  STATUS = 'KO' , CAUSE = 'ALREADY_RELEASED' WHERE CORRELATION_ID= ? and  TRANSACTION_ID = ? and INTERFACE_NAME= 'ChargeSubscriberResponse'
+							</sql>
+                     <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+                     <parameter expression="$ctx:TransactionId" type="CHAR"/>
+                  </statement>
+               </dbreport>
+               <payloadFactory media-type="xml">
+                  <format>
+                     <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                                       xmlns:urn="urn:vimpelcom:carrier-billing-hub:types">
+                        <soapenv:Header/>
+                        <soapenv:Body>
+                           <urn:ChargeSubscriberCallback>
+                              <urn:CorrelationId>$1</urn:CorrelationId>
+                              <urn:TransactionId>$2</urn:TransactionId>
+                              <urn:Result>ALREADY_RELEASED</urn:Result>
+                              <urn:Message/>
+                           </urn:ChargeSubscriberCallback>
+                        </soapenv:Body>
+                     </soapenv:Envelope>
+                  </format>
+                  <args>
+                     <arg evaluator="xml" expression="get-property('CorrelationID')"/>
+                     <arg evaluator="xml" expression="get-property('TransactionId')"/>
+                  </args>
+               </payloadFactory>
+               <property name="DISABLE_CHUNKING" value="true" scope="axis2"/>
+               <header name="Action"
+                       value="urn:vimpelcom:carrier-billing-hub:opco-interaction:soap:charge-subscriber-response"/>
+               <header name="User-Agent" scope="transport" value="Apache-HttpClient/4.1.1"/>
+               <log level="full"/>
+               <call>
+                  <endpoint>
+                     <address uri="http://10.50.13.129:8282/GDCBCallback" format="soap11"/>
+                  </endpoint>
+               </call>
+               <log level="full"/>
+               <log level="custom">
+                  <property name="###############################ALREADY_RELEASED#############################"
+                            value="******************ALREADY_RELEASED****************************************"/>
+               </log>
+               <drop/>
+            </case>
+            <default/>
+         </switch>
+         <property name="result" value="SUCCESS"/>
+      </case>
+   </switch>
+   <filter xmlns:ns="http://org.apache.synapse/xsd" xpath="$ctx:result='SUCCESS'">
+      <then>
+         <dbreport>
+            <connection>
+               <pool>
+                  <dsName>jdbc/ott</dsName>
+               </pool>
+            </connection>
+            <statement>
+               <sql>
+						Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET  TRANSACTION_ID = ? , STATUS = 'OK' , CAUSE = '' ,`DESCRIPTION`=?, MSISDN=? WHERE CORRELATION_ID= ? and INTERFACE_NAME= 'ChargeSubscriberResponse'
+					</sql>
+               <parameter expression="$ctx:TransactionId" type="CHAR"/>
+               <parameter expression="$ctx:DESCRIPTION" type="VARCHAR"/>
+               <parameter expression="$ctx:MSISDN" type="VARCHAR"/>
+               <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+            </statement>
+         </dbreport>
+      </then>
+      <else>
+         <dbreport>
+            <connection>
+               <pool>
+                  <dsName>jdbc/ott</dsName>
+               </pool>
+            </connection>
+            <statement>
+               <sql>
+						Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET STATUS = 'KO' , CAUSE = ? ,`DESCRIPTION`='' WHERE CORRELATION_ID= ? and TRANSACTION_ID = ? and INTERFACE_NAME= 'ChargeSubscriberResponse'
+					</sql>
+               <parameter expression="$ctx:result" type="CHAR"/>
+               <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+               <parameter expression="$ctx:TransactionId" type="CHAR"/>
+            </statement>
+         </dbreport>
+      </else>
+   </filter>
+   <log level="custom">
+      <property name="ChargeSubscriber" value="ChargeSubscriberResponse"/>
+      <property xmlns:ns="http://org.apache.synapse/xsd"
+                name="result"
+                expression="$ctx:result"/>
+   </log>
+   <log level="custom">
+      <property xmlns:ns="http://org.apache.synapse/xsd"
+                name="InResponseCorrelationID"
+                expression="$ctx:CorrelationID"/>
+   </log>
+   <payloadFactory media-type="xml">
+      <format>
+         <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                           xmlns:urn="urn:vimpelcom:carrier-billing-hub:types">
+            <soapenv:Header/>
+            <soapenv:Body>
+               <urn:ChargeSubscriberCallback>
+                  <urn:CorrelationId>$1</urn:CorrelationId>
+                  <urn:TransactionId>$2</urn:TransactionId>
+                  <urn:Result>$3</urn:Result>
+                  <urn:Message/>
+               </urn:ChargeSubscriberCallback>
+            </soapenv:Body>
+         </soapenv:Envelope>
+      </format>
+      <args>
+         <arg xmlns:ns="http://org.apache.synapse/xsd"
+              evaluator="xml"
+              expression="$ctx:CorrelationID"/>
+         <arg xmlns:ns="http://org.apache.synapse/xsd"
+              evaluator="xml"
+              expression="$ctx:TransactionId"/>
+         <arg xmlns:ns="http://org.apache.synapse/xsd"
+              evaluator="xml"
+              expression="$ctx:result"/>
+      </args>
+   </payloadFactory>
+   <property name="DISABLE_CHUNKING" value="true" scope="axis2"/>
+   <header name="Action"
+           value="urn:vimpelcom:carrier-billing-hub:opco-interaction:soap:charge-subscriber-response"/>
+   <header name="User-Agent" scope="transport" value="Apache-HttpClient/4.1.1"/>
+   <log level="full"/>
+   <call>
+      <endpoint>
+         <address uri="http://10.50.13.129:8282/GDCBCallback" format="soap11">
+            <timeout>
+               <responseAction>fault</responseAction>
+            </timeout>
+            <suspendOnFailure>
+               <errorCodes>-1</errorCodes>
+               <initialDuration>0</initialDuration>
+               <progressionFactor>1.0</progressionFactor>
+               <maximumDuration>0</maximumDuration>
+            </suspendOnFailure>
+            <markForSuspension>
+               <errorCodes>-1</errorCodes>
+            </markForSuspension>
+         </address>
+      </endpoint>
+   </call>
+   <log level="full">
+      <property name="CHARGE_SUBSCRIBER_RESPONSE" value="OTT Endpoint called"/>
+   </log>
+</sequence>

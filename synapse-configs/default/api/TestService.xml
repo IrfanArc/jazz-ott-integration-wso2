@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<api xmlns="http://ws.apache.org/ns/synapse"
+     name="TestService"
+     context="/testService">
+   <resource methods="GET" uri-template="/testService">
+      <inSequence>
+         <log level="custom">
+            <property name="INIT" value="TestService Called"/>
+         </log>
+         <log level="full"/>
+         <payloadFactory media-type="json" description="ResponseMsg">
+            <format>{"targetType":"msisdn",
+					 "target":["31623246835","380975310415","995579023009"],
+					 "priority":"normal",
+					 "notification":{"title":"Jazz Telco Offer","body":"This is a telco offer from your telecom operator","sound":"default"},
+					 "data":{"page":"selfcaredetails","offerid":"738383"}}</format>
+            <args/>
+         </payloadFactory>
+         <header name="Authorization"
+                 scope="transport"
+                 value="c471bdd5f381aa3654d98f4591eaa968"/>
+         <call>
+            <endpoint>
+               <http method="POST" uri-template="https://push-test.buttonhub.com/push/offer"/>
+            </endpoint>
+         </call>
+         <log level="full"/>
+         <respond/>
+      </inSequence>
+   </resource>
+</api>

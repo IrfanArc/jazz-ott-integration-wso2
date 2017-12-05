@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sequence xmlns="http://ws.apache.org/ns/synapse" name="ChargeSubscriberFirstRes">
+   <log level="full"/>
+   <log level="custom">
+      <property name="property_nameFirst" value="INSIDE CHARGE_SUBSCRIBER ACK SENDER"/>
+   </log>
+   <payloadFactory media-type="xml">
+      <format>
+         <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">
+            <SOAP-ENV:Body>
+               <ns0:ChargeSubscriberMessageResponse xmlns:ns0="urn:vimpelcom:carrier-billing-hub:types">
+                  <ns0:CorrelationId>$1</ns0:CorrelationId>
+                  <ns0:Result>SUCCESS</ns0:Result>
+               </ns0:ChargeSubscriberMessageResponse>
+            </SOAP-ENV:Body>
+         </SOAP-ENV:Envelope>
+      </format>
+      <args>
+         <arg xmlns:soapenv="http://www.w3.org/2003/05/soap-envelope"
+              xmlns:ns="http://org.apache.synapse/xsd"
+              xmlns:ns3="http://org.apache.synapse/xsd"
+              evaluator="xml"
+              expression="$ctx:NewCorrelationID"/>
+      </args>
+   </payloadFactory>
+   <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+   <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+   <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+   <header name="To" scope="default" action="remove"/>
+   <log level="full"/>
+   <respond/>
+</sequence>

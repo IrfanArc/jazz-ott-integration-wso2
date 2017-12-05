@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<api xmlns="http://ws.apache.org/ns/synapse"
+     name="NotificationService"
+     context="/cms">
+   <resource methods="POST" uri-template="/pushnotify">
+      <inSequence>
+         <log level="custom">
+            <property name="INIT" value="PushNotify Called"/>
+         </log>
+         <log level="full"/>
+         <payloadFactory media-type="json" description="ResponseMsg">
+            <format>{"response": "OK","Test":"$1"}</format>
+            <args>
+               <arg evaluator="xml" expression="//test"/>
+            </args>
+         </payloadFactory>
+         <property name="HTTP_SC" value="200" scope="axis2" type="STRING"/>
+         <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+         <header name="To" scope="default" expression="get-property('ReplyTo')"/>
+         <property name="messageType"
+                   value="application/json"
+                   scope="axis2"
+                   type="STRING"/>
+         <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+         <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+         <header name="To" scope="default" action="remove"/>
+         <respond/>
+      </inSequence>
+   </resource>
+</api>

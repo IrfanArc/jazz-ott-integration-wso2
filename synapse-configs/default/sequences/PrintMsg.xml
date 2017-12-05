@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sequence xmlns="http://ws.apache.org/ns/synapse" name="PrintMsg">
+   <log level="custom">
+      <property name="init" value="************SMS RECEIVED***********"/>
+   </log>
+   <log level="full"/>
+   <log level="custom">
+      <property name="final" value="*****************END OF SEQUENCE***************"/>
+   </log>
+</sequence>

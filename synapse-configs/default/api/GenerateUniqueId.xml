@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<api xmlns="http://ws.apache.org/ns/synapse"
+     name="GenerateUniqueId"
+     context="/generateId">
+   <resource methods="GET">
+      <inSequence>
+         <property xmlns:ns="http://org.apache.synapse/xsd"
+                   name="TransactionId"
+                   expression="fn:substring-after(get-property('MessageID'),'urn:uuid:')"/>
+         <log level="custom">
+            <property name="**********In GenerateUniqueIdSequence" value="************"/>
+            <property name="TransactionId" expression="get-property('TransactionId')"/>
+         </log>
+         <log level="custom">
+            <property xmlns:ns="http://org.apache.synapse/xsd"
+                      name="SMPPPayload"
+                      expression="get-property('SMPPPayload')"/>
+            <property xmlns:ns0="http://ws.apache.org/commons/ns/payload"
+                      xmlns:ns="http://org.apache.synapse/xsd"
+                      name="SMPPPayload"
+                      expression="$body/ns0:text"/>
+         </log>
+         <property xmlns:ns="http://org.apache.synapse/xsd"
+                   name="SMPPPayload"
+                   expression="get-property('SMPPPayload')"/>
+         <property xmlns:ns0="http://ws.apache.org/commons/ns/payload"
+                   xmlns:ns="http://org.apache.synapse/xsd"
+                   name="SMPPPayload"
+                   expression="$body/ns0:text"/>
+         <payloadFactory media-type="xml">
+            <format>
+               <transaction xmlns="">$1</transaction>
+            </format>
+            <args>
+               <arg evaluator="xml" expression="get-property('TransactionId')"/>
+            </args>
+         </payloadFactory>
+         <log level="full"/>
+         <respond/>
+      </inSequence>
+   </resource>
+</api>

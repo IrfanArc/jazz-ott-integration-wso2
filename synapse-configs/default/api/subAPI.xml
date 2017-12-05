@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<api xmlns="http://ws.apache.org/ns/synapse" name="subAPI" context="/sub">
+   <resource methods="POST" uri-template="/{msisdn}">
+      <inSequence>
+         <property name="NORMALIZED_MSISDN_FOR_IN" value="3058617278"/>
+         <property name="pkr" value="50"/>
+         <property name="Description" value="Hello Moto"/>
+         <class name="Subscriber.SubscriberInfo"/>
+      </inSequence>
+   </resource>
+</api>

@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sequence xmlns="http://ws.apache.org/ns/synapse" name="fault">
+   <log level="full">
+      <property name="MESSAGE" value="Executing default 'fault' sequence"/>
+      <property xmlns:ns="http://org.apache.synapse/xsd"
+                name="error"
+                expression="get-property('ERROR_CODE')"/>
+      <property xmlns:ns="http://org.apache.synapse/xsd"
+                name="ERROR_MESSAGE"
+                expression="get-property('ERROR_MESSAGE')"/>
+   </log>
+   <filter xmlns:ns="http://org.apache.synapse/xsd"
+           source="get-property('ERROR_CODE')"
+           regex="0|101503|101505">
+      <then>
+         <property name="FORCE_ERROR_ON_SOAP_FAULT"
+                   value="true"
+                   scope="default"
+                   type="STRING"/>
+         <dbreport>
+            <connection>
+               <pool>
+                  <dsName>jdbc/ott</dsName>
+               </pool>
+            </connection>
+            <statement>
+               <sql>Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET STATUS = 'KO' , CAUSE = 'SYSTEM_DOWN' ,`DESCRIPTION`='SYSTEM_DOWN', TIMEIN = NOW() WHERE CORRELATION_ID= ? and TRANSACTION_ID =?</sql>
+               <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+               <parameter expression="$ctx:TransactionId" type="CHAR"/>
+            </statement>
+         </dbreport>
+         <payloadFactory media-type="xml">
+            <format>
+               <ns:SystemFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                               xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                               xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                  <ns:CorrelationId>$1</ns:CorrelationId>
+                  <ns:Cause>SYSTEM_DOWN</ns:Cause>
+                  <ns:Message>SYSTEM_DOWN.</ns:Message>
+                  <ns:UserMessage>SYSTEM_DOWN.</ns:UserMessage>
+               </ns:SystemFault>
+            </format>
+            <args>
+               <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+            </args>
+         </payloadFactory>
+         <enrich>
+            <source type="body" clone="true"/>
+            <target type="property" property="ORGINAL_PAYLOAD"/>
+         </enrich>
+         <makefault version="soap11">
+            <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                  value="soap11Env:Server"/>
+            <reason value="This is an operation implementation generated fault"/>
+            <role/>
+            <detail expression="$ctx:ORGINAL_PAYLOAD"/>
+         </makefault>
+         <property name="HTTP_SC" value="500" scope="axis2"/>
+         <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+         <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+         <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+         <header name="To" action="remove"/>
+         <respond/>
+      </then>
+   </filter>
+   <filter xmlns:ns="http://org.apache.synapse/xsd"
+           source="get-property('ERROR_CODE')"
+           regex="101504">
+      <then>
+         <property name="FORCE_ERROR_ON_SOAP_FAULT"
+                   value="true"
+                   scope="default"
+                   type="STRING"/>
+         <dbreport>
+            <connection>
+               <pool>
+                  <dsName>jdbc/ott</dsName>
+               </pool>
+            </connection>
+            <statement>
+               <sql>Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET , STATUS = 'KO' , CAUSE = 'SYSTEM_DOWN' ,`DESCRIPTION`='SYSTEM_DOWN.' WHERE CORRELATION_ID= ? </sql>
+               <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+            </statement>
+         </dbreport>
+         <payloadFactory media-type="xml">
+            <format>
+               <ns:SystemFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                               xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                               xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                  <ns:CorrelationId>$1</ns:CorrelationId>
+                  <ns:Cause>SYSTEM_BUSY</ns:Cause>
+                  <ns:Message>SYSTEM_BUSY</ns:Message>
+                  <ns:UserMessage>SYSTEM_BUSY</ns:UserMessage>
+               </ns:SystemFault>
+            </format>
+            <args>
+               <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+            </args>
+         </payloadFactory>
+         <enrich>
+            <source type="body" clone="true"/>
+            <target type="property" property="ORGINAL_PAYLOAD"/>
+         </enrich>
+         <makefault version="soap11">
+            <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+                  value="soap11Env:Server"/>
+            <reason value="This is an operation implementation generated fault"/>
+            <role/>
+            <detail expression="$ctx:ORGINAL_PAYLOAD"/>
+         </makefault>
+         <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+         <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+         <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+         <header name="To" action="remove"/>
+         <respond/>
+      </then>
+   </filter>
+   <property name="FORCE_ERROR_ON_SOAP_FAULT"
+             value="true"
+             scope="default"
+             type="STRING"/>
+   <dbreport>
+      <connection>
+         <pool>
+            <dsName>jdbc/ott</dsName>
+         </pool>
+      </connection>
+      <statement>
+         <sql>Update OTTHub_Wso2.HUB_TRANSACTION_STORE SET STATUS = 'KO' , CAUSE = 'SYSTEM_DOWN' ,`DESCRIPTION`='SYSTEM_DOWN', TIMEIN = NOW() WHERE CORRELATION_ID= ? and TRANSACTION_ID =?</sql>
+         <parameter expression="$ctx:CorrelationID" type="CHAR"/>
+         <parameter expression="$ctx:TransactionId" type="CHAR"/>
+      </statement>
+   </dbreport>
+   <payloadFactory media-type="xml">
+      <format>
+         <ns:SystemFault xmlns:ns="urn:vimpelcom:carrier-billing-hub:types"
+                         xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/"
+                         xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+            <ns:CorrelationId>$1</ns:CorrelationId>
+            <ns:Cause>SYSTEM_DOWN</ns:Cause>
+            <ns:Message>SYSTEM_DOWN.</ns:Message>
+            <ns:UserMessage>SYSTEM_DOWN.</ns:UserMessage>
+         </ns:SystemFault>
+      </format>
+      <args>
+         <arg evaluator="xml" expression="$ctx:CorrelationID"/>
+      </args>
+   </payloadFactory>
+   <enrich>
+      <source type="body" clone="true"/>
+      <target type="property" property="ORGINAL_PAYLOAD"/>
+   </enrich>
+   <makefault version="soap11">
+      <code xmlns:soap11Env="http://schemas.xmlsoap.org/soap/envelope/"
+            value="soap11Env:Server"/>
+      <reason value="This is an operation implementation generated fault"/>
+      <role/>
+      <detail expression="$ctx:ORGINAL_PAYLOAD"/>
+   </makefault>
+   <property name="HTTP_SC" value="500" scope="axis2"/>
+   <property name="messageType" value="text/xml" scope="axis2" type="STRING"/>
+   <property name="NO_ENTITY_BODY" scope="axis2" action="remove"/>
+   <property name="RESPONSE" value="true" scope="default" type="STRING"/>
+   <header name="To" action="remove"/>
+   <respond/>
+</sequence>
